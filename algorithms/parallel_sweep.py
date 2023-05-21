@@ -226,7 +226,7 @@ class MultipleParallelSweep:
         """
         Run the algorithm.
 
-        :param env: The environment
+        :return: True if the person was found, False otherwise
         """
         drones_positions = self.get_drones_initial_positions()
         self.env.reset(drones_positions=drones_positions)
