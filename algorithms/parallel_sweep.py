@@ -3,6 +3,7 @@ from typing import Tuple
 from dataclasses import dataclass
 import math
 
+
 class PossibleActions(Enum):
     left = 0
     right = 1
@@ -134,7 +135,7 @@ class SingleParallelSweep:
         :yield: The next action of the drone
         """
         for action in self.generate_next_movement():
-            yield action.value
+            yield action
 
 
 class MultipleParallelSweep:
@@ -150,17 +151,10 @@ class MultipleParallelSweep:
 
         :return: The size of the grid that each drone will search
         """
-        if self.n_drones not in {1, 2} and self.n_drones % 4 != 0:
-            raise ValueError("The number of agents must be 1 or 2 or a multiple of 4")
+        if self.n_drones not in {1, 2, 4}:
+            raise ValueError("The number of agents must be 1, 2 or 4")
 
-        divisor = 2 if self.n_drones == 2 else math.sqrt(self.n_drones)
-
-        grid_size_each_drone = self.grid_size / divisor
-
-        if grid_size_each_drone % 1 != 0:
-            raise ValueError("The grid size must be a multiple of the number of agents")
-
-        return int(grid_size_each_drone)
+        return int(self.grid_size / 2)
 
     def get_first_drone_info(self):
         """
@@ -186,21 +180,73 @@ class MultipleParallelSweep:
 
         :return: All the drone cell boundaries
         """
-        if self.n_drones == 2:
-            return [(0, 0), (self.grid_size_each_drone, 0)]
+        match self.n_drones:
+            case 1:
+                return [(0, 0)]
+            case 2:
+                return [
+                    (0, 0),
+                    (self.grid_size - 1, self.grid_size - 1),
+                ]  # Drone 1: right down
+            case 4:
+                return [
+                    (0, 0),  # Drone 0: left up
+                    (0, self.grid_size - 1),  # Drone 1: left down
+                    (self.grid_size - 1, 0),  # Drone 2: right up
+                    (
+                        self.grid_size - 1,
+                        self.grid_size - 1,
+                    ),  # Drone 3: right down
+                ]
 
-        drones_initial_positions = []
-        for i in range(
-            0,
-            self.grid_size,
-            self.grid_size_each_drone
-            if self.n_drones != 2
-            else self.grid_size_each_drone * 2,
-        ):
-            for j in range(0, self.grid_size, self.grid_size_each_drone):
-                drones_initial_positions.append((i, j))
+    def get_left_down_movement(self, left_up_movement: PossibleActions):
+        """
+        Get the left down movement from the left up movement.
 
-        return drones_initial_positions
+        :param left_up_movement: The left up movement
+        :return: The left down movement
+        """
+        match left_up_movement:
+            case PossibleActions.up:
+                return PossibleActions.down.value
+            case PossibleActions.down:
+                return PossibleActions.up.value
+
+        return left_up_movement.value
+
+    def get_right_up_movement(self, left_up_movement: PossibleActions):
+        """
+        Get the right up movement from the left up movement.
+
+        :param left_up_movement: The left up movement
+        :return: The right up movement
+        """
+        match left_up_movement:
+            case PossibleActions.left:
+                return PossibleActions.right.value
+            case PossibleActions.right:
+                return PossibleActions.left.value
+
+        return left_up_movement.value
+
+    def get_right_down_movement(self, left_up_movement: PossibleActions):
+        """
+        Get the right down movement from the right up movement.
+
+        :param left_up_movement: The right up movement
+        :return: The right down movement
+        """
+        match left_up_movement:
+            case PossibleActions.left:
+                return PossibleActions.right.value
+            case PossibleActions.right:
+                return PossibleActions.left.value
+            case PossibleActions.up:
+                return PossibleActions.down.value
+            case PossibleActions.down:
+                return PossibleActions.up.value
+
+        return left_up_movement.value
 
     def generate_next_action(self):
         """
@@ -213,9 +259,15 @@ class MultipleParallelSweep:
 
         for action in parallel_sweep.genarate_next_action():
             actions = {}
+            actions["drone0"] = action.value
 
-            for i in range(self.n_drones):
-                actions[f"drone{i}"] = action
+            match self.n_drones:
+                case 2:
+                    actions["drone1"] = self.get_right_down_movement(action)
+                case 4:
+                    actions["drone1"] = self.get_left_down_movement(action)
+                    actions["drone2"] = self.get_right_up_movement(action)
+                    actions["drone3"] = self.get_right_down_movement(action)
 
             yield actions
 

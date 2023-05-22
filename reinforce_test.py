@@ -62,4 +62,4 @@ def test_reinforce_100_times(config_number=0):
     print(f"Found: {found/100}% of the times")
 
 
-test_reinforce_100_times(3)
+test_reinforce_100_times(5)
