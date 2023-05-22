@@ -3,9 +3,6 @@ from typing import Tuple
 from dataclasses import dataclass
 import math
 
-from DroneSwarmSearchEnvironment.env import DroneSwarmSearch
-
-
 class PossibleActions(Enum):
     left = 0
     right = 1

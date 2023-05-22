@@ -33,4 +33,4 @@ def test_parallel_sweep_100_times(config_number=0):
     print(f"Found: {found/100}% of the times")
 
 
-test_parallel_sweep_100_times()
+test_parallel_sweep_100_times(config_number=5)
