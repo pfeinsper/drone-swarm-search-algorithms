@@ -231,11 +231,16 @@ class MultipleParallelSweep:
         drones_positions = self.get_drones_initial_positions()
         self.env.reset(drones_positions=drones_positions)
 
+        steps_count = 0
+        total_reward = 0
+
         for actions in self.generate_next_action():
-            _, _, done, _, info = self.env.step(actions)
+            _, reward, done, _, info = self.env.step(actions)
             done = any(done.values())
+            steps_count += 1
+            total_reward += reward["total_reward"]
 
             if done:
                 break
 
-        return info["Found"]
+        return total_reward, steps_count, info["Found"]
