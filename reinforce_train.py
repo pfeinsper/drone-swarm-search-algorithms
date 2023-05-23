@@ -1,6 +1,6 @@
 import torch
 import pandas as pd
-from DroneSwarmSearchEnvironment.env import DroneSwarmSearch
+from DSSE.env import DroneSwarmSearch
 
 from config import get_config
 from algorithms.reinforce import ReinforceAgent
@@ -22,7 +22,7 @@ rl_agent = ReinforceAgent(
     env,
     y=0.999999,
     lr=0.000001,
-    episodes=100_000,
+    episodes=150_000,
     drones_initial_positions=config.drones_initial_positions,
 )
 nn, statistics = rl_agent.train()

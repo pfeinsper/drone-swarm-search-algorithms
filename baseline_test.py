@@ -1,5 +1,5 @@
 from algorithms.parallel_sweep import MultipleParallelSweep
-from DroneSwarmSearchEnvironment.env import DroneSwarmSearch
+from DSSE.env import DroneSwarmSearch
 
 from config import get_config
 
