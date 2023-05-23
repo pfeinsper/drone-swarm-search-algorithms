@@ -27,10 +27,11 @@ def test_parallel_sweep_100_times(config_number=0):
         total_reward += reward
         steps_count += steps
         found += f
+        print(f"Epsiode reward: {reward}, steps: {steps}, found: {f}")
 
     print(f"Average reward: {total_reward / 100}")
     print(f"Average steps: {steps_count / 100}")
     print(f"Found: {found/100}% of the times")
 
 
-test_parallel_sweep_100_times(config_number=4)
+test_parallel_sweep_100_times(config_number=5)
