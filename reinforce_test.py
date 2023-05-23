@@ -20,11 +20,12 @@ def run_one_episode(env, nn, config):
             dist = torch.distributions.Categorical(probs)
             episode_actions[f"drone{drone_index}"] = dist.sample().item()
 
-        total_reward += reward_dict["total_reward"]
-        steps_count += 1
-
         obs_list_, reward_dict, _, done, info = env.step(episode_actions)
         obs_list = reinforce.flatten_state(obs_list_)
+        done = any(done.values())
+
+        total_reward += reward_dict["total_reward"]
+        steps_count += 1
 
     return total_reward, steps_count, info["Found"]
 
@@ -41,7 +42,7 @@ def test_reinforce_100_times(config_number=0):
         grid_size=config.grid_size,
         render_mode="human",
         render_grid=True,
-        render_gradient=False,
+        render_gradient=True,
         n_drones=config.n_drones,
         vector=config.vector,
         person_initial_position=config.person_initial_position,
@@ -62,4 +63,4 @@ def test_reinforce_100_times(config_number=0):
     print(f"Found: {found/100}% of the times")
 
 
-test_reinforce_100_times(5)
+test_reinforce_100_times(1)
