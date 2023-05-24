@@ -66,4 +66,4 @@ def test_reinforce_100_times(config_number=0):
     return total_reward / 100, steps_count / 100, found / 100
 
 
-test_reinforce_100_times(1)
+test_reinforce_100_times(0)

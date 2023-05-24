@@ -5,7 +5,7 @@ from DSSE.env import DroneSwarmSearch
 from config import get_config
 from algorithms.reinforce import ReinforceAgent
 
-config = get_config(3)
+config = get_config(0)
 
 env = DroneSwarmSearch(
     grid_size=config.grid_size,

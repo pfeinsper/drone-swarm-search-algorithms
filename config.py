@@ -18,6 +18,17 @@ def get_config(config_number: int) -> EnvConfig:
     """Configuration for environment variables"""
 
     match config_number:
+        case 0:
+            return EnvConfig(
+                grid_size=5,
+                n_drones=1,
+                vector=[0.1, 0.1],
+                drones_initial_positions=[[0, 0]],
+                person_initial_position=[2, 2],
+                disperse_constant=3,
+                timestep_limit=200,
+            )
+
         case 1:
             return EnvConfig(
                 grid_size=20,
