@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import Tuple
 from dataclasses import dataclass
-import math
 
 
 class PossibleActions(Enum):
@@ -162,6 +161,14 @@ class MultipleParallelSweep:
 
         :return: The information of the first drone
         """
+        if self.n_drones == 1:
+            last_vertice = (self.grid_size - 1, self.grid_size - 1)
+            return DroneInfo(
+                grid_size=self.grid_size,
+                initial_position=(0, 0),
+                last_vertice=last_vertice,
+            )
+
         last_vertice = (
             (self.grid_size_each_drone - 1, self.grid_size_each_drone - 1)
             if self.n_drones != 2

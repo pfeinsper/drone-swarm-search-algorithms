@@ -1,11 +1,11 @@
 import torch
 import pandas as pd
-from DroneSwarmSearchEnvironment.env import DroneSwarmSearch
+from DSSE.env import DroneSwarmSearch
 
 from config import get_config
 from algorithms.reinforce import ReinforceAgent
 
-config = get_config(2)
+config = get_config(3)
 
 env = DroneSwarmSearch(
     grid_size=config.grid_size,
@@ -15,7 +15,7 @@ env = DroneSwarmSearch(
     n_drones=config.n_drones,
     person_initial_position=config.person_initial_position,
     disperse_constant=config.disperse_constant,
-    timestep_limit=100,
+    timestep_limit=config.timestep_limit,
 )
 
 rl_agent = ReinforceAgent(

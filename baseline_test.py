@@ -1,5 +1,5 @@
 from algorithms.parallel_sweep import MultipleParallelSweep
-from DroneSwarmSearchEnvironment.env import DroneSwarmSearch
+from DSSE.env import DroneSwarmSearch
 
 from config import get_config
 
@@ -31,7 +31,7 @@ def test_parallel_sweep_100_times(config_number=0):
 
     print(f"Average reward: {total_reward / 100}")
     print(f"Average steps: {steps_count / 100}")
-    print(f"Found: {found/100}% of the times")
+    print(f"Found: {found/100 * 100}% of the times")
 
 
 test_parallel_sweep_100_times(config_number=5)

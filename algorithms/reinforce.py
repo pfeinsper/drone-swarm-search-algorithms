@@ -1,12 +1,11 @@
 import torch
 import numpy as np
-from DroneSwarmSearchEnvironment.env import DroneSwarmSearch
+from DSSE.env import DroneSwarmSearch
 
 
 class Reinforce:
     def __init__(self, env: DroneSwarmSearch):
         self.env = env
-
         self.num_top_positions = 10
         self.num_agents = len(env.possible_agents)
 

@@ -1,5 +1,5 @@
 import torch
-from DroneSwarmSearchEnvironment.env import DroneSwarmSearch
+from DSSE.env import DroneSwarmSearch
 
 from config import get_config
 from algorithms.reinforce import Reinforce
@@ -47,6 +47,7 @@ def test_reinforce_100_times(config_number=0):
         vector=config.vector,
         person_initial_position=config.person_initial_position,
         disperse_constant=config.disperse_constant,
+        timestep_limit=config.timestep_limit,
     )
     total_reward = 0
     steps_count = 0
@@ -61,6 +62,8 @@ def test_reinforce_100_times(config_number=0):
     print(f"Average reward: {total_reward / 100}")
     print(f"Average steps: {steps_count / 100}")
     print(f"Found: {found/100}% of the times")
+
+    return total_reward / 100, steps_count / 100, found / 100
 
 
 test_reinforce_100_times(1)
