@@ -5,7 +5,8 @@ from config import get_config
 from algorithms.reinforce import Reinforce
 
 
-def run_one_episode(env, nn, config):
+def run_one_episode_reinforce(env, nn, config_number=1):
+    config = get_config(config_number)
     reinforce = Reinforce(env=env)
     episode_actions = {}
     state = env.reset(
@@ -43,7 +44,7 @@ def test_reinforce_100_times(config_number=0):
 
     env = DroneSwarmSearch(
         grid_size=config.grid_size,
-        render_mode="ansi",
+        render_mode="human",
         render_grid=True,
         render_gradient=True,
         n_drones=config.n_drones,
@@ -57,7 +58,7 @@ def test_reinforce_100_times(config_number=0):
     found = 0
 
     for _ in range(100):
-        reward, steps, f = run_one_episode(env, nn, config)
+        reward, steps, f = run_one_episode_reinforce(env, nn, config)
         total_reward += reward
         steps_count += steps
         found += f
@@ -69,4 +70,4 @@ def test_reinforce_100_times(config_number=0):
     return total_reward / 100, steps_count / 100, found / 100
 
 
-test_reinforce_100_times(1)
+test_reinforce_100_times(3)

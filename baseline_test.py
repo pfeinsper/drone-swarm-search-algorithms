@@ -8,13 +8,13 @@ def test_parallel_sweep_100_times(config_number=0):
     config = get_config(config_number)
     env = DroneSwarmSearch(
         grid_size=config.grid_size,
-        render_mode="human",
+        render_mode="ansi",
         render_grid=False,
         render_gradient=False,
         n_drones=config.n_drones,
         person_initial_position=config.person_initial_position,
         disperse_constant=config.disperse_constant,
-        timestep_limit=200,
+        timestep_limit=config.timestep_limit,
     )
     algorithm = MultipleParallelSweep(env)
 
