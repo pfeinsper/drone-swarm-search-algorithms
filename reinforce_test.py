@@ -8,7 +8,10 @@ from algorithms.reinforce import Reinforce
 def run_one_episode(env, nn, config):
     reinforce = Reinforce(env=env)
     episode_actions = {}
-    state = env.reset(drones_positions=config.drones_initial_positions)
+    state = env.reset(
+        drones_positions=config.drones_initial_positions,
+        vector=reinforce.get_random_speed_vector(),
+    )
     obs_list = reinforce.flatten_state(state)
     steps_count = 0
     total_reward = 0
@@ -40,7 +43,7 @@ def test_reinforce_100_times(config_number=0):
 
     env = DroneSwarmSearch(
         grid_size=config.grid_size,
-        render_mode="human",
+        render_mode="ansi",
         render_grid=True,
         render_gradient=True,
         n_drones=config.n_drones,
@@ -61,9 +64,9 @@ def test_reinforce_100_times(config_number=0):
 
     print(f"Average reward: {total_reward / 100}")
     print(f"Average steps: {steps_count / 100}")
-    print(f"Found: {found/100}% of the times")
+    print(f"Found: {found/100 * 100}% of the time")
 
     return total_reward / 100, steps_count / 100, found / 100
 
 
-test_reinforce_100_times(0)
+test_reinforce_100_times(1)
