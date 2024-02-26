@@ -13,60 +13,31 @@ class EnvConfig:
     disperse_constant: float
     timestep_limit: int
 
-
 def get_config(config_number: int) -> EnvConfig:
     """Configuration for environment variables"""
 
+    env_config = EnvConfig(
+        grid_size=40,
+        n_drones=1,
+        vector=[0.1, 0.1],
+        drones_initial_positions=None,
+        person_initial_position=[10, 10],
+        disperse_constant=1,
+        timestep_limit=100
+    )
+
     match config_number:
         case 1:
-            return EnvConfig(
-                grid_size=20,
-                n_drones=1,
-                vector=[0.1, 0.1],
-                drones_initial_positions=[[0, 0]],
-                person_initial_position=[9, 9],
-                disperse_constant=3,
-                timestep_limit=100,
-            )
-
+            env_config.disperse_constant = 1
+            env_config.n_drones = 1
         case 2:
-            return EnvConfig(
-                grid_size=20,
-                n_drones=2,
-                vector=[0.1, 0.1],
-                drones_initial_positions=[[0, 0], [19, 19]],
-                person_initial_position=[9, 9],
-                disperse_constant=3,
-                timestep_limit=100,
-            )
-
+            env_config.disperse_constant = 1
+            env_config.n_drones = 4
         case 3:
-            return EnvConfig(
-                grid_size=20,
-                n_drones=4,
-                vector=[0.1, 0.1],
-                drones_initial_positions=[[0, 0], [0, 19], [19, 0], [19, 19]],
-                person_initial_position=[9, 9],
-                disperse_constant=2,
-                timestep_limit=100,
-            )
-
+            env_config.disperse_constant = 5
+            env_config.n_drones = 1
         case 4:
-            return EnvConfig(
-                grid_size=20,
-                n_drones=8,
-                vector=[0.1, 0.1],
-                drones_initial_positions=[
-                    [0, 0],
-                    [0, 19],
-                    [19, 0],
-                    [19, 19],
-                    [9, 0],
-                    [9, 19],
-                    [0, 9],
-                    [19, 9],
-                ],
-                person_initial_position=[9, 9],
-                disperse_constant=3,
-                timestep_limit=100,
-            )
+            env_config.disperse_constant = 5
+            env_config.n_drones = 4
+    return env_config
+        

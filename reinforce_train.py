@@ -1,11 +1,16 @@
 import torch
 import pandas as pd
-from DSSE.env import DroneSwarmSearch
+from DSSE.core.environment.env import DroneSwarmSearch
 
 from config import get_config
 from algorithms.reinforce import ReinforceAgent
 
-config = get_config(1)
+NUM_CONFIG = 1
+config = get_config(NUM_CONFIG)
+
+# Tests: 
+# N_drones   | 1 | 4 |
+# Dispersion | 1 | 5 | 
 
 env = DroneSwarmSearch(
     grid_size=config.grid_size,
@@ -27,9 +32,9 @@ rl_agent = ReinforceAgent(
 )
 nn, statistics = rl_agent.train()
 
-torch.save(nn, f"data/nn_{config.grid_size}_{config.grid_size}_{config.n_drones}.pt")
+torch.save(nn, f"data/nn_{config.grid_size}_{config.n_drones}_{config.disperse_constant}.pt")
 df = pd.DataFrame(statistics, columns=["episode", "actions", "rewards"])
 df.to_csv(
-    f"data/statistics_{config.grid_size}_{config.grid_size}_{config.n_drones}.csv",
+    f"data/statistics_{config.grid_size}_{config.n_drones}_{config.disperse_constant}.csv",
     index=False,
 )
