@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from DSSE.env import DroneSwarmSearch
+from DSSE.core.environment.env import DroneSwarmSearch
 
 
 class Reinforce:
@@ -153,7 +153,7 @@ class ReinforceAgent(Reinforce):
 
             vector = self.get_random_speed_vector()
             state = self.env.reset(
-                drones_positions=self.drones_initial_positions, vector=vector
+                vector=vector
             )
             obs_list = self.flatten_state(state)
             done = False
@@ -186,6 +186,8 @@ class ReinforceAgent(Reinforce):
             if i % 100 == 0:
                 self.print_episode_stats(i, show_actions, show_rewards)
                 show_rewards, show_actions = [], []
+            if i % 5_000 == 0:
+                torch.save(self.nn, f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}.pt")
 
             statistics.append([i, count_actions, total_reward])
             discounted_returns = self.calculate_discounted_returns(rewards)
