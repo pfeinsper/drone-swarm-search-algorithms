@@ -1,8 +1,8 @@
 import torch
-from DSSE.env import DroneSwarmSearch
+from DSSE.core.environment.env import DroneSwarmSearch
 
 from config import get_config
-from algorithms.reinforce import Reinforce
+from algorithms.reinforce_gpu import Reinforce
 
 
 def run_one_episode_reinforce(env, nn, config_number=1):
@@ -38,12 +38,12 @@ def test_reinforce_100_times(config_number=0):
     config = get_config(config_number)
 
     nn = torch.load(
-        f"data/nn_{config.grid_size}_{config.grid_size}_{config.n_drones}.pt"
+        f"data_new/nn_{config.grid_size}_{config.n_drones}_{config.disperse_constant}_new.pt"
     )
     nn = nn.float()
 
     env = DroneSwarmSearch(
-        grid_size=config.grid_size,
+        grid_size=40,
         render_mode="human",
         render_grid=True,
         render_gradient=True,
@@ -70,4 +70,4 @@ def test_reinforce_100_times(config_number=0):
     return total_reward / 100, steps_count / 100, found / 100
 
 
-test_reinforce_100_times(3)
+test_reinforce_100_times(4)

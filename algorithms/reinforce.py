@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from DSSE.core.environment.env import DroneSwarmSearch
+from DSSE import DroneSwarmSearch
 
 
 class Reinforce:
