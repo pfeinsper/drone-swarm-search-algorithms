@@ -64,7 +64,7 @@ def drones_colide(drones_positions: dict, new_drone_position: tuple) -> bool:
     return new_drone_position in drones_positions.values()
 
 
-def policy(obs, agents):
+def greedy_policy(obs, agents):
     """
     Greedy approach: Rush and search for the greatest prob. point
     """
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     rewards = 0
     done = False
     while not done:
-        actions = policy(observations, env.get_agents())
+        actions = greedy_policy(observations, env.get_agents())
         observations, reward, _, done, info = env.step(actions)
         rewards += reward["total_reward"]
         done = any(done.values())

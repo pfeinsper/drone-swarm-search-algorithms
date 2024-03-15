@@ -1,5 +1,5 @@
 import torch
-from DSSE.core.environment.env import DroneSwarmSearch
+from DSSE import DroneSwarmSearch
 
 from config import get_config
 from algorithms.reinforce_gpu import Reinforce
@@ -38,13 +38,13 @@ def test_reinforce_100_times(config_number=0):
     config = get_config(config_number)
 
     nn = torch.load(
-        f"data_new/nn_{config.grid_size}_{config.n_drones}_{config.disperse_constant}_new.pt"
+        f"models/nn_{config}_reinforce.pt"
     )
     nn = nn.float()
 
     env = DroneSwarmSearch(
-        grid_size=40,
-        render_mode="human",
+        grid_size=config.grid_size,
+        render_mode="ansi",
         render_grid=True,
         render_gradient=True,
         n_drones=config.n_drones,

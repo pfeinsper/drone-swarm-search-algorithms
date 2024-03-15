@@ -4,7 +4,7 @@ from .dqn_hyperparameters import DQNHyperparameters
 from .dqn_agent import DQNAgent
 
 
-class DQNTrainer:
+class DQNAgents:
     def __init__(self, env, hyperparameters: DQNHyperparameters, config) -> None:
         self.env = env
         self.n_epochs = hyperparameters.max_episodes
@@ -43,13 +43,17 @@ class DQNTrainer:
             while not done:
                 total_steps = total_steps + 1
 
-                actions = self.select_action(curr_state)
+                actions, actions_tensors = self.select_action(curr_state)
                 next_state, reward_dict, _, done, _ = self.env.step(actions)
+
 
                 next_state = self.transform_state(next_state)
                 done = any(done.values())
+                if done:
+                    next_state = [None] * self.config.n_drones
+                
                 self.store_episode(
-                    curr_state, actions, reward_dict, next_state, done
+                    curr_state, actions_tensors, reward_dict, next_state, done
                 )
 
                 count_actions += self.config.n_drones
@@ -94,7 +98,7 @@ class DQNTrainer:
             agent_name = agent.name
             agent.store_episode(
                 curr_state[agent_index],
-                actions[agent_name],
+                actions[agent_index],
                 rewards[agent_name],
                 next_state[agent_index],
                 done,
@@ -102,9 +106,12 @@ class DQNTrainer:
 
     def select_action(self, state):
         actions = {}
+        actions_tensor_list = []
         for agent in self.agents:
-            actions[agent.name] = agent.select_action(state[agent.index])
-        return actions
+            action = agent.select_action(state[agent.index])
+            actions[agent.name] = action.item()
+            actions_tensor_list.append(action)
+        return actions, actions_tensor_list
 
     def train_nn(self):
         # Each agent has its memory buffer, thus we just need to .train() each one of them

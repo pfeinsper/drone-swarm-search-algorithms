@@ -1,7 +1,7 @@
 from DSSE import DroneSwarmSearch
 
 from config import get_config
-from algorithms.greedy_search import policy, get_random_vector
+from algorithms.greedy_search import greedy_policy, get_random_vector
 
 
 def run_one_episode_greedy(env, config=1):
@@ -11,7 +11,7 @@ def run_one_episode_greedy(env, config=1):
     done = False
 
     while not done:
-        actions = policy(observation, env.get_agents())
+        actions = greedy_policy(observation, env.get_agents())
 
         observation, reward_dict, _, done, info = env.step(actions)
         done = any(done.values())

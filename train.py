@@ -1,7 +1,7 @@
 import argparse
 import pandas as pd
 from DSSE import DroneSwarmSearch
-from algorithms import ReinforceAgent, ReinforceAgents, DQNTrainer, DQNHyperparameters
+from algorithms import ReinforceAgent, ReinforceAgentsIL, DQNAgents, DQNHyperparameters
 from config import get_config
 
 IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il"]
@@ -39,9 +39,9 @@ def get_model(model_name, env, config):
                 drones_initial_positions=config.drones_initial_positions,
             )
         case "reinforce_il":
-            model = ReinforceAgents(
+            model = ReinforceAgentsIL(
                 env,
-                y=0.999999,
+                gamma=0.999999,
                 lr=0.000001,
                 episodes=100_000,
                 drones_initial_positions=config.drones_initial_positions,
@@ -57,7 +57,7 @@ def get_model(model_name, env, config):
                 batch_size=64,
                 memory_size=2_000,
             )
-            model = DQNTrainer(env, hyperparameters, config)
+            model = DQNAgents(env, hyperparameters, config)
         case _:
             raise NotImplementedError(f"Model {model_name} not implemented.")
     return model

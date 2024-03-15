@@ -2,7 +2,7 @@ import pandas as pd
 from DSSE import DroneSwarmSearch
 
 from config import get_config
-from algorithms.reinforce_il import ReinforceAgents
+from algorithms.reinforce_il.reinforce_agents import ReinforceAgentsIL
 
 config = get_config(4)
 
@@ -21,9 +21,9 @@ env = DroneSwarmSearch(
     timestep_limit=config.timestep_limit,
 )
 
-rl_agent = ReinforceAgents(
+rl_agent = ReinforceAgentsIL(
     env,
-    y=0.999999,
+    gamma=0.999999,
     lr=0.000001,
     episodes=100_000,
     drones_initial_positions=config.drones_initial_positions,

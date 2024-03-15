@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from DSSE import DroneSwarmSearch
 
-
+NUM_TOP_POSITIONS = 10
 class Reinforce:
     def __init__(self, env: DroneSwarmSearch):
         self.env = env
@@ -207,3 +207,21 @@ class ReinforceAgent(Reinforce):
             f"models/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}_reinforce.pt"
         )
         return statistics
+    
+
+    @classmethod
+    def from_trained(cls, env, config, path=None):
+        if not path:
+            path = f"models/nn_{config}_reinforce.pt"
+        print(f"Loading model from {path}")
+        agent = cls(env, 0, 0, 0, [])
+        agent.nn = torch.load(path)
+        return agent
+    
+    def __call__(self, observations, _):
+        obs_list = self.flatten_state(observations)
+        actions = self.select_actions(obs_list)
+        return actions
+
+    def get_algorithm_name(self):
+        return "reinforce"

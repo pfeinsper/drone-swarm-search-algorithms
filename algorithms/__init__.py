@@ -1,6 +1,8 @@
-from .dqn.dqn_train import DQNTrainer
+from .dqn.dqn_agents import DQNAgents
 from .dqn.dqn_hyperparameters import DQNHyperparameters
 from .reinforce_gpu import ReinforceAgent
-from .reinforce_il import ReinforceAgents
+from .reinforce_il.reinforce_agents import ReinforceAgentsIL
+from .greedy_search import greedy_policy
 
-__all__ = ["DQNTrainer", "ReinforceAgent", "ReinforceAgents", "DQNHyperparameters"]
+
+__all__ = ["DQNAgents", "ReinforceAgent", "ReinforceAgentsIL", "DQNHyperparameters", "greedy_policy"]
