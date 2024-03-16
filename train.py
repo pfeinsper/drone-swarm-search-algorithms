@@ -49,13 +49,14 @@ def get_model(model_name, env, config):
         case "dqn":
             hyperparameters = DQNHyperparameters(
                 max_episodes=100_000,
-                learning_rate=0.000001,
+                learning_rate=1e-4,
                 gamma=0.999999,
-                epsilon=1.0,
-                epsilon_min=0.01,
-                epsilon_decay=0.995,
-                batch_size=64,
-                memory_size=2_000,
+                epsilon=0.9,
+                epsilon_min=0.05,
+                epsilon_decay=0.9999,
+                batch_size=256,
+                memory_size=20_000,
+                tau=0.0005,
             )
             model = DQNAgents(env, hyperparameters, config)
         case _:

@@ -13,3 +13,4 @@ class DQNHyperparameters:
     batch_size: int = 64
     update_target_every: int = 100
     memory_size: int = 2000
+    tau: float = 0.005

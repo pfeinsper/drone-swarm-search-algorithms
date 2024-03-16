@@ -10,9 +10,7 @@ class DQNAgents:
         self.n_epochs = hyperparameters.max_episodes
         n_agents = len(env.get_agents())
         self.agents = [
-            DQNAgent(
-                n_agents, len(env.action_space("drone0")), hyperparameters, index
-            )
+            DQNAgent(n_agents, len(env.action_space("drone0")), hyperparameters, index)
             for index in range(n_agents)
         ]
 
@@ -41,20 +39,17 @@ class DQNAgents:
             count_actions = total_reward = 0
 
             while not done:
-                total_steps = total_steps + 1
+                total_steps += 1
 
                 actions, actions_tensors = self.select_action(curr_state)
                 next_state, reward_dict, _, done, _ = self.env.step(actions)
-
 
                 next_state = self.transform_state(next_state)
                 done = any(done.values())
                 if done:
                     next_state = [None] * self.config.n_drones
-                
-                self.store_episode(
-                    curr_state, actions_tensors, reward_dict, next_state, done
-                )
+
+                self.store_episode(curr_state, actions_tensors, reward_dict, next_state)
 
                 count_actions += self.config.n_drones
                 total_reward += reward_dict["total_reward"]
@@ -63,6 +58,7 @@ class DQNAgents:
 
             if epoch > 0 and epoch % 100 == 0:
                 self.log_episode_stats(epoch, show_actions, all_rewards)
+                # print(self.agents[0].episilon)
                 show_actions = []
             if epoch % 5_000 == 0:
                 self.save_model("checkpoints")
@@ -76,32 +72,33 @@ class DQNAgents:
             all_rewards.append(total_reward)
             statistics.append([epoch, count_actions, total_reward])
 
-            for agent in self.agents:
-                agent.update_exploration_probability()
             # Must have at least batch_size samples in memory to start training
             if total_steps >= batch_size:
                 self.train_nn()
+
+            for agent in self.agents:
+                agent.update_exploration_probability()
+                agent.update_target_nn()
 
         self.save_model("models")
         return statistics
 
     def transform_state(self, state):
         """
-        Gets the observation dict and transform on a list of flatten tensors, 
+        Gets the observation dict and transform on a list of flatten tensors,
         the layout of the tensor is defined in the Agent class.
         """
         return [agent.flatten_state(state) for agent in self.agents]
 
-    def store_episode(self, curr_state, actions, rewards, next_state, done):
+    def store_episode(self, curr_state, actions, rewards, next_state):
         for agent in self.agents:
             agent_index = agent.index
             agent_name = agent.name
             agent.store_episode(
-                curr_state[agent_index],
-                actions[agent_index],
-                rewards[agent_name],
-                next_state[agent_index],
-                done,
+                current_state=curr_state[agent_index],
+                action=actions[agent_index],
+                reward=rewards[agent_name],
+                next_state=next_state[agent_index],
             )
 
     def select_action(self, state):

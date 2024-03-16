@@ -84,7 +84,7 @@ class ReinforceAgentsIL:
             show_actions.append(count_actions)
 
             if len(all_rewards) > 100:
-                if all(r >= 100_000 for r in all_rewards[-80:]):
+                if all(r >= 100_000 for r in all_rewards[-90:]):
                     stop = True
                     logging.info("[INFO] Early stopping")
 

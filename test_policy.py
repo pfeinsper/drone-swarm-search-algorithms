@@ -28,6 +28,11 @@ def parse_args():
         action="store_true",
         help="If True, will run 100 episodes and print statistics",
     )
+    parser.add_argument(
+        "--checkpoint",
+        action="store_true",
+        help="If True, will load the model from a checkpoint",
+    )
     return parser.parse_args()
 
 
