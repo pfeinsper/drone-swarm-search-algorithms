@@ -37,6 +37,10 @@ def parse_args():
 
 
 def play_one_episode(env, policy):
+    """
+    Takes a policy callable with func(obs, agents_list) signature
+    returns (total_episode_reward, total_steps, found_person)
+    """
     observation = env.reset(vector=get_random_speed_vector())
     steps_count = 0
     total_reward = 0
