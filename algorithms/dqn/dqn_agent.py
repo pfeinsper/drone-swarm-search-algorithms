@@ -1,10 +1,13 @@
 import random
 import torch
+from math import exp
 import numpy as np
 from .replay_memory import ReplayMemory, Transition
 
 NUM_TOP_POSITIONS = 10
-
+EPS_START = 0.9
+EPS_END = 0.05
+EPS_DECAY = 50_000
 
 class DQNAgent:
     def __init__(self, state_size, action_size, hyperparameters, index):
@@ -38,6 +41,7 @@ class DQNAgent:
 
         # We define our memory buffer where we will store our experiences
         self.memory_buffer = ReplayMemory(hyperparameters.memory_size)
+        self.steps_done = 0
 
     def create_nn(self, input_dim, output_dim):
         dtype = torch.float
@@ -54,6 +58,8 @@ class DQNAgent:
         return torch.optim.AdamW(parameters, lr=self.lr, amsgrad=True)
 
     def select_action(self, current_state):
+        self.episilon = EPS_END + (EPS_START - EPS_END) * exp(-1. * self.steps_done / EPS_DECAY)
+        self.steps_done += 1
         # Use epsilon-greedy strategy to choose the next action
         prob = random.random()
         if prob < self.episilon:

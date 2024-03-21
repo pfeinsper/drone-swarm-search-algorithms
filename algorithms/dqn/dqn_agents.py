@@ -27,13 +27,21 @@ class DQNAgents:
         statistics, show_actions, all_rewards = [], [], []
         stop = False
         batch_size = self.agents[0].batch_size
+        # Place the drones each on a quarter of the grid
+        drones_initial_positions = [
+            (self.env.grid_size // 4, self.env.grid_size // 4),
+            (self.env.grid_size // 4, 3 * self.env.grid_size // 4),
+            (3 * self.env.grid_size // 4, self.env.grid_size // 4),
+            (3 * self.env.grid_size // 4, 3 * self.env.grid_size // 4),
+        ]
 
         for epoch in range(self.n_epochs):
             if stop:
                 break
 
             vector = self.get_random_speed_vector()
-            curr_state = self.env.reset(vector=vector)
+            
+            curr_state = self.env.reset(vector=vector, drones_positions=drones_initial_positions)
             curr_state = self.transform_state(curr_state)
             done = False
             count_actions = total_reward = 0
