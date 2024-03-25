@@ -56,7 +56,7 @@ class DQNAgent:
             
 
     def optimize_model(self):
-        if len(self.memory) < self.batch_size or self.steps_done % 4 != 0:
+        if len(self.memory) < self.batch_size:
             return
         transitions = self.memory.sample(self.batch_size)
         batch = Transition(*zip(*transitions))
