@@ -1,10 +1,10 @@
 import argparse
 import pandas as pd
 from DSSE import DroneSwarmSearch
-from algorithms import ReinforceAgent, ReinforceAgentsIL, DQNAgents, DQNHyperparameters
+from algorithms import ReinforceAgent, ReinforceAgentsIL, DQNAgents, DQNHyperparameters, DQLAgents
 from config import get_config
 
-IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il"]
+IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il", 'dql']
 
 
 def parse_args():
@@ -53,12 +53,25 @@ def get_model(model_name, env, config):
                 gamma=0.999999,
                 epsilon=0.9,
                 epsilon_min=0.05,
-                epsilon_decay=0.9999,
+                epsilon_decay=40_000,
                 batch_size=256,
                 memory_size=20_000,
                 tau=0.0005,
             )
             model = DQNAgents(env, hyperparameters, config)
+        case 'dql':
+            hyperparameters = DQNHyperparameters(
+                max_episodes=100_000,
+                learning_rate=0.000001,
+                gamma=0.999999,
+                epsilon=0.9,
+                epsilon_min=0.05,
+                epsilon_decay=40_000,
+                batch_size=256,
+                memory_size=20_000,
+                tau=0.0005,
+            )
+            model = DQLAgents(env, hyperparameters, config)
         case _:
             raise NotImplementedError(f"Model {model_name} not implemented.")
     return model

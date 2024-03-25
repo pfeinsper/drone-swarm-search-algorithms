@@ -175,5 +175,5 @@ class ReinforceAgentsIL:
         instance.agents = agents
         return instance
 
-    def get_algorithm_name(self):
+    def __repr__(self):
         return "reinforce_il"

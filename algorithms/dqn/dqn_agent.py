@@ -1,140 +1,116 @@
-import random
 import torch
-from math import exp
-import numpy as np
+import torch.optim as optim
+import torch.nn as nn
 from .replay_memory import ReplayMemory, Transition
+import random
+import math
+from .model import DQN
+import numpy as np
+from .dqn_hyperparameters import DQNHyperparameters
 
 NUM_TOP_POSITIONS = 10
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 50_000
 
 class DQNAgent:
-    def __init__(self, state_size, action_size, hyperparameters, index):
-        self.n_actions = action_size
-        # Hyperparameters
-        self.lr = hyperparameters.learning_rate
-        self.gamma = hyperparameters.gamma
-        self.episilon = hyperparameters.epsilon
-        self.epsilon_decay = hyperparameters.epsilon_decay
-        self.epsilon_min = hyperparameters.epsilon_min
-        self.tau = hyperparameters.tau
-        self.batch_size = hyperparameters.batch_size
-
+    def __init__(self, state_size: int, action_size: int, params: DQNHyperparameters, index: int) -> None:
         self.index = index
         self.name = f"drone{index}"
-        # NN setup
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.state_size = state_size
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device
+        n_observations = (state_size + NUM_TOP_POSITIONS) * 2
         self.num_actions = action_size
-        # state size being the number of drones, we add the number positions of the probability matrix
-        # to consider in the input and multiply by 2 to consider x and y coordinates
-        self.num_entries = (state_size + NUM_TOP_POSITIONS) * 2
 
-        self.nn = self.create_nn(self.num_entries, self.num_actions).to(self.device)
-        self.optimizer = self.create_optimizer(self.nn.parameters())
-        # Target NN for double DQN
-        self.target_nn = self.create_nn(self.num_entries, self.num_actions).to(
-            self.device
-        )
-        self.target_nn.load_state_dict(self.nn.state_dict())
+        lr = params.learning_rate
+        self.tau = params.tau
+        self.gamma = params.gamma
+        self.batch_size = params.batch_size
+        self.episodes = params.max_episodes
+        # Epsilon greedy parameters
+        self.epsilon_start = params.epsilon
+        self.epsilon_min = params.epsilon_min
+        self.epsilon_dec = params.epsilon_decay
 
-        # We define our memory buffer where we will store our experiences
-        self.memory_buffer = ReplayMemory(hyperparameters.memory_size)
+        policy_net = DQN(n_observations, action_size).to(device)
+        target_net = DQN(n_observations, action_size).to(device)
+        target_net.load_state_dict(policy_net.state_dict())
+        self.policy_net = policy_net
+        self.target_net = target_net
+
+        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=lr, amsgrad=True)
+        self.memory = ReplayMemory(params.memory_size)
         self.steps_done = 0
 
-    def create_nn(self, input_dim, output_dim):
-        dtype = torch.float
-        model = torch.nn.Sequential(
-            torch.nn.Linear(input_dim, 512, device=self.device, dtype=dtype),
-            torch.nn.ReLU(),
-            torch.nn.Linear(512, 256, device=self.device, dtype=dtype),
-            torch.nn.ReLU(),
-            torch.nn.Linear(256, output_dim, device=self.device, dtype=dtype),
-        )
-        return model.float()
+    def select_action(self, state):
+        sample = random.random()
 
-    def create_optimizer(self, parameters):
-        return torch.optim.AdamW(parameters, lr=self.lr, amsgrad=True)
-
-    def select_action(self, current_state):
-        self.episilon = EPS_END + (EPS_START - EPS_END) * exp(-1. * self.steps_done / EPS_DECAY)
+        eps_threshold = self.epsilon_min + (
+            self.epsilon_start - self.epsilon_min
+        ) * math.exp(-1.0 * self.steps_done / self.epsilon_dec)
         self.steps_done += 1
-        # Use epsilon-greedy strategy to choose the next action
-        prob = random.random()
-        if prob < self.episilon:
+        if sample > eps_threshold:
+            with torch.no_grad():
+                return self.policy_net(state).max(1).indices.view(1, 1)
+        else:
             return torch.tensor(
-                [[np.random.choice(range(self.n_actions))]],
-                device=self.device,
-                dtype=torch.long,
+                [[random.randrange(0, self.num_actions)]], device=self.device, dtype=torch.long
             )
-        with torch.no_grad():
-            return self.predict(current_state).max(1).indices.view(1, 1)
+            
 
-    def predict(self, state):
-        nn_input = state.float().to(self.device)
-        return self.nn(nn_input)
+    def optimize_model(self):
+        if len(self.memory) < self.batch_size or self.steps_done % 4 != 0:
+            return
+        transitions = self.memory.sample(self.batch_size)
+        batch = Transition(*zip(*transitions))
 
-    def update_exploration_probability(self):
-        if self.episilon > self.epsilon_min:
-            self.episilon *= self.epsilon_decay
-
-    def store_episode(self, current_state, action, reward, next_state):
-        reward = torch.tensor([reward], device=self.device)
-        self.memory_buffer.push(
-            state=current_state, action=action, next_state=next_state, reward=reward
-        )
-
-    def train(self):
-        # We shuffle the memory buffer and select a batch size of experiences
-        batch_sample = self.memory_buffer.sample(self.batch_size)
-        # This converts batch-array of Transitions to Transition of batch-arrays.
-        batch_transpose = Transition(*zip(*batch_sample))
-
+        # Compute a mask of non-final states and concatenate the batch elements
+        # (a final state would've been the one after which simulation ended)
         non_final_mask = torch.tensor(
-            tuple(map(lambda s: s is not None, batch_transpose.next_state)),
+            tuple(map(lambda s: s is not None, batch.next_state)),
             device=self.device,
             dtype=torch.bool,
         )
+        non_final_next_states = torch.cat(
+            [s for s in batch.next_state if s is not None]
+        )
+        state_batch = torch.cat(batch.state)
+        action_batch = torch.cat(batch.action)
+        reward_batch = torch.cat(batch.reward)
 
-        non_final_next_states_list = [
-            s for s in batch_transpose.next_state if s is not None
-        ]
-        state_batch = torch.cat(batch_transpose.state).to(self.device)
-        action_batch = torch.cat(batch_transpose.action).to(self.device)
-        reward_batch = torch.cat(batch_transpose.reward).to(self.device)
+        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 
-        # We compute Q(s_t, a) - the model computes Q(s_t), then we select the columns of actions taken
-        state_action_values = self.predict(state_batch).gather(1, action_batch)
-
-        # Compute V(s_{t+1}) for all next states.
         next_state_values = torch.zeros(self.batch_size, device=self.device)
-        # If the state is not final, we use the target_nn to compute the next state values
-        if len(non_final_next_states_list) > 0:
-            non_final_next_states = torch.cat(non_final_next_states_list).to(
-                self.device
+        with torch.no_grad():
+            next_state_values[non_final_mask] = (
+                self.target_net(non_final_next_states).max(1).values
             )
-            with torch.no_grad():
-                nn_inputs = non_final_next_states.float()
-                next_state_values[non_final_mask] = (
-                    self.target_nn(nn_inputs).max(1).values
-                )
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 
-        # Compute Huber loss - like MSE but less sensitive to outliers
-        criterion = torch.nn.SmoothL1Loss()
+        # Compute Huber loss
+        criterion = nn.SmoothL1Loss()
         loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
         # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
         # In-place gradient clipping
-        # torch.nn.utils.clip_grad_value_(self.nn.parameters(), 100)
+        torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
         self.optimizer.step()
 
+    def update_target(self):
+        target_net_state_dict = self.target_net.state_dict()
+        policy_net_state_dict = self.policy_net.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[
+                key
+            ] * self.tau + target_net_state_dict[key] * (1 - self.tau)
+        self.target_net.load_state_dict(target_net_state_dict)
+
+    def store_episode(self, state, action, reward, next_state):
+        reward = torch.tensor([reward], device=self.device)
+        self.memory.push(state, action, next_state, reward)
+    
     def save_model(self, path):
-        torch.save(self.nn, path)
+        torch.save(self.policy_net, path)
 
     def get_flatten_top_probabilities_positions(self, probability_matrix):
         flattened_probs = probability_matrix.flatten()
@@ -166,15 +142,14 @@ class DQNAgent:
         )
         res = torch.cat(
             (drone_position, others_position, flatten_top_probabilities), dim=-1
-        ).to(self.device)
-
+        ).float().to(self.device)
         return res.unsqueeze(0)
 
-    def update_target_nn(self):
-        target_net_state_dict = self.target_nn.state_dict()
-        policy_net_state_dict = self.nn.state_dict()
-        for key in policy_net_state_dict:
-            from_current_policy = policy_net_state_dict[key] * self.tau
-            from_target_net = target_net_state_dict[key] * (1 - self.tau)
-            target_net_state_dict[key] = from_current_policy + from_target_net
-        self.target_nn.load_state_dict(target_net_state_dict)
+
+    @classmethod
+    def load_from_file(cls, path, device, num_actions, num_entries, index):
+        print(f"Loading model from {path}")
+        model = torch.load(path)
+        agent = cls(num_entries, num_actions, DQNHyperparameters(), index)
+        agent.policy_net = model.to(device)
+        return agent

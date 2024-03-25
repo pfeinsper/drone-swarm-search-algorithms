@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import torch
 from .dqn_hyperparameters import DQNHyperparameters
 from .dqn_agent import DQNAgent
 
@@ -58,6 +59,8 @@ class DQNAgents:
                     next_state = [None] * self.config.n_drones
 
                 self.store_episode(curr_state, actions_tensors, reward_dict, next_state)
+                if total_steps >= batch_size:
+                    self.train_nn()
 
                 count_actions += self.config.n_drones
                 total_reward += reward_dict["total_reward"]
@@ -80,13 +83,8 @@ class DQNAgents:
             all_rewards.append(total_reward)
             statistics.append([epoch, count_actions, total_reward])
 
-            # Must have at least batch_size samples in memory to start training
-            if total_steps >= batch_size:
-                self.train_nn()
-
             for agent in self.agents:
-                agent.update_exploration_probability()
-                agent.update_target_nn()
+                agent.update_target()
 
         self.save_model("models")
         return statistics
@@ -142,3 +140,36 @@ class DQNAgents:
             last_100_actions_mean,
             last_100_rewards_mean,
         )
+
+    @classmethod
+    def from_trained(cls, env, config, checkpoint=False):
+        agents = []
+        num_agents = len(env.get_agents())
+        folder = "checkpoints" if checkpoint else "models"
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        for index in range(num_agents):
+            agents.append(DQNAgent.load_from_file(
+                path=f"{folder}/nn_{config}_{index}_dqn.pt",
+                device=device,
+                num_actions=len(env.action_space("drone0")),
+                num_entries=num_agents,
+                index=index,
+            )
+        )
+        instance = cls(env, DQNHyperparameters(), config)
+        instance.agents = agents
+        return instance
+
+    def __call__(self, observations, agents_list):
+        actions = {}
+        state = self.transform_state(observations)
+        for agent in self.agents:
+            agent_name = agent.name
+            with torch.no_grad():
+                action = torch.argmax(agent.policy_net(state[agent.index]))
+            actions[agent_name] = action.item()
+        return actions
+    
+    def __repr__(self) -> str:
+        return "dqn"

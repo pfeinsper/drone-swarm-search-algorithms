@@ -223,5 +223,5 @@ class ReinforceAgent(Reinforce):
         actions = self.select_actions(obs_list)
         return actions
 
-    def get_algorithm_name(self):
+    def __repr__(self):
         return "reinforce"
