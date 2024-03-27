@@ -119,7 +119,7 @@ class DQNAgents:
     def train_nn(self):
         # Each agent has its memory buffer, thus we just need to .train() each one of them
         for agent in self.agents:
-            agent.train()
+            agent.optimize_model()
 
     def save_model(self, folder):
         for agent in self.agents:
