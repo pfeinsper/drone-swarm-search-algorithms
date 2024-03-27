@@ -101,7 +101,7 @@ class DQNAgents:
             agent_index = agent.index
             agent_name = agent.name
             agent.store_episode(
-                current_state=curr_state[agent_index],
+                state=curr_state[agent_index],
                 action=actions[agent_index],
                 reward=rewards[agent_name],
                 next_state=next_state[agent_index],
