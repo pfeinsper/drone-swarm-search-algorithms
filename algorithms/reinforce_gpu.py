@@ -1,8 +1,9 @@
+import logging
 import torch
 import numpy as np
-from DSSE.core.environment.env import DroneSwarmSearch
+from DSSE import DroneSwarmSearch
 
-
+NUM_TOP_POSITIONS = 10
 class Reinforce:
     def __init__(self, env: DroneSwarmSearch):
         self.env = env
@@ -10,19 +11,14 @@ class Reinforce:
         self.num_top_positions = 10
         self.num_agents = len(env.possible_agents)
 
-    def flatten_positions(self, positions):
-        flattened = [pos for sublist in positions for pos in sublist]
-        return flattened
-
     def get_flatten_top_probabilities_positions(self, probability_matrix):
         flattened_probs = probability_matrix.flatten()
         indices = flattened_probs.argsort()[-self.num_top_positions :][::-1]
-        positions = [
-            (idx // len(probability_matrix), idx % len(probability_matrix))
-            for idx in indices
-        ]
-
-        return self.flatten_positions(positions)
+        positions = np.unravel_index(indices, probability_matrix.shape)
+        # TODO: Discuss -> Before it was (row, col), but drone position is (x, y)
+        # Stack the positions in the format (x, y) or (col, row)
+        positions = np.stack((positions[1], positions[0]), axis=-1)
+        return positions.flatten()
 
     def flatten_state(self, observations):
         flatten_all = []
@@ -78,6 +74,13 @@ class ReinforceAgent(Reinforce):
         self.nn = self.create_neural_network().to(self.device)
         self.optimizer = self.create_optimizer(self.nn.parameters())
 
+        logging.basicConfig(
+            filename=f"logs/training_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}_reinforce.log",
+            level=logging.INFO,
+            format="[%(levelname)s] %(asctime)s - %(message)s",
+            filemode="w",
+        )
+
     def create_neural_network(self):
         dtype = torch.float
         nn = torch.nn.Sequential(
@@ -110,9 +113,13 @@ class ReinforceAgent(Reinforce):
         return rewards
 
     def print_episode_stats(self, episode_num, show_actions, show_rewards):
-        print(
-            f"Up to episode = {episode_num}, Actions (mean) = {sum(show_actions) / len(show_actions)}, "
-            f"Reward (mean) = {sum(show_rewards) / len(show_rewards)}"
+        actions_mean = sum(show_actions) / len(show_actions)
+        rewards_mean = sum(show_rewards) / len(show_rewards)
+        logging.info(
+            "Episode = %s, Actions (mean) = %s, Reward (mean) = %s",
+            episode_num,
+            actions_mean,
+            rewards_mean,
         )
 
     def calculate_discounted_returns(self, rewards):
@@ -143,6 +150,9 @@ class ReinforceAgent(Reinforce):
                 loss.backward()
                 self.optimizer.step()
 
+    def save_nn(self, path):
+        torch.save(self.nn, path)
+
     def train(self):
         statistics, show_rewards, show_actions, all_rewards = [], [], [], []
         stop = False
@@ -152,9 +162,7 @@ class ReinforceAgent(Reinforce):
                 break
 
             vector = self.get_random_speed_vector()
-            state = self.env.reset(
-                vector=vector
-            )
+            state = self.env.reset(vector=vector)
             obs_list = self.flatten_state(state)
             done = False
             actions, states, rewards = [], [], []
@@ -179,18 +187,41 @@ class ReinforceAgent(Reinforce):
             show_actions.append(count_actions)
 
             if len(all_rewards) > 100:
-                if all([r >= 100000 for r in all_rewards[-80:]]):
+                if all(r >= 100_000 for r in all_rewards[-90:]):
                     stop = True
-                    print("Acabou mais cedo")
+                    logging.info("Early stopping")
 
             if i % 100 == 0:
                 self.print_episode_stats(i, show_actions, show_rewards)
                 show_rewards, show_actions = [], []
             if i % 5_000 == 0:
-                torch.save(self.nn, f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}.pt")
+                self.save_nn(
+                    f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}.pt"
+                )
 
             statistics.append([i, count_actions, total_reward])
             discounted_returns = self.calculate_discounted_returns(rewards)
             self.update_neural_network(states, actions, discounted_returns)
 
-        return self.nn, statistics
+        self.save_nn(
+            f"models/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}_reinforce.pt"
+        )
+        return statistics
+    
+
+    @classmethod
+    def from_trained(cls, env, config, path=None):
+        if not path:
+            path = f"models/nn_{config}_reinforce.pt"
+        print(f"Loading model from {path}")
+        agent = cls(env, 0, 0, 0, [])
+        agent.nn = torch.load(path)
+        return agent
+    
+    def __call__(self, observations, _):
+        obs_list = self.flatten_state(observations)
+        actions = self.select_actions(obs_list)
+        return actions
+
+    def __repr__(self):
+        return "reinforce"
