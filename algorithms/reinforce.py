@@ -145,9 +145,7 @@ class ReinforceAgent(Reinforce):
                 break
 
             vector = self.get_random_speed_vector()
-            state = self.env.reset(
-                vector=vector
-            )
+            state = self.env.reset(vector=vector)
             obs_list = self.flatten_state(state)
             done = False
             actions, states, rewards = [], [], []
@@ -183,7 +181,10 @@ class ReinforceAgent(Reinforce):
                 self.print_episode_stats(i, show_actions, show_rewards)
                 show_rewards, show_actions = [], []
             if i % 10_000 == 0:
-                torch.save(self.nn, f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}.pt")
+                torch.save(
+                    self.nn,
+                    f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}.pt",
+                )
 
             statistics.append([i, count_actions, total_reward])
             discounted_returns = self.calculate_discounted_returns(rewards)

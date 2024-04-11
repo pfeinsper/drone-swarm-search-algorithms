@@ -1,5 +1,6 @@
 from random import uniform
 import numpy as np
+
 # from core.environment.env import DroneSwarmSearch
 from DSSE.core.environment.env import DroneSwarmSearch
 from DSSE.core.environment.constants import Actions
@@ -72,6 +73,7 @@ def choose_drone_action(drone_position: tuple, greatest_prob_position) -> int:
     elif is_x_lesser and is_y_lesser:
         return Actions.UP_LEFT.value
 
+
 def drones_colide(drones_positions: dict, new_drone_position: tuple) -> bool:
     return new_drone_position in drones_positions.values()
 
@@ -87,15 +89,15 @@ def policy(obs, agents):
     drones_positions = {drone: obs[drone]["observation"][0] for drone in agents}
     # Get n_drones greatest probabilities.
     greatest_probs = np.argsort(prob_matrix, axis=None)[-n_drones:]
-    
+
     for index, drone in enumerate(agents):
         greatest_prob = np.unravel_index(greatest_probs[index], prob_matrix.shape)
 
         drone_obs = obs[drone]["observation"]
         drone_action = choose_drone_action(drone_obs[0], greatest_prob)
-        
+
         new_position = get_new_position(drone_obs[0], drone_action)
-        
+
         # Avoid colision waiting 1 timeste
         if drones_colide(drones_positions, new_position):
             drone_actions[drone] = Actions.SEARCH.value
