@@ -23,16 +23,16 @@ class Reinforce:
 
     def flatten_state(self, observations):
         flatten_all = []
-
+        
         for drone_index in range(self.num_agents):
             drone_position = torch.tensor(
-                observations["drone" + str(drone_index)]["observation"][0],
+                observations["drone" + str(drone_index)][0],
                 device=self.device,
             )
             others_position = torch.flatten(
                 torch.tensor(
                     [
-                        observations["drone" + str(index)]["observation"][0]
+                        observations["drone" + str(index)][0]
                         for index in range(self.num_agents)
                         if index != drone_index
                     ],
@@ -41,7 +41,7 @@ class Reinforce:
             )
             flatten_top_probabilities = torch.tensor(
                 self.get_flatten_top_probabilities_positions(
-                    observations["drone" + str(drone_index)]["observation"][1]
+                    observations["drone" + str(drone_index)][1]
                 ),
                 device=self.device,
             )
@@ -163,9 +163,8 @@ class ReinforceAgent(Reinforce):
                 break
 
             # vector = self.get_random_speed_vector()
-            print(get_opt())
-            state = self.env.reset(options=get_opt())
-            obs_list = self.flatten_state(state)
+            observations, info = self.env.reset(options=get_opt())
+            obs_list = self.flatten_state(observations)
             done = False
             actions, states, rewards = [], [], []
             count_actions, total_reward = 0, 0
@@ -181,7 +180,7 @@ class ReinforceAgent(Reinforce):
                 rewards.append(self.extract_rewards(reward_dict))
                 obs_list = self.flatten_state(obs_list_)
                 count_actions += self.num_agents
-                total_reward += reward_dict["total_reward"]
+                total_reward += sum(reward_dict.values())
                 done = any(done.values())
 
             show_rewards.append(total_reward)
@@ -198,7 +197,7 @@ class ReinforceAgent(Reinforce):
                 show_rewards, show_actions = [], []
             if i % 5_000 == 0:
                 self.save_nn(
-                    f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}.pt"
+                    f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.dispersion_inc}.pt"
                 )
 
             statistics.append([i, count_actions, total_reward])
@@ -206,7 +205,7 @@ class ReinforceAgent(Reinforce):
             self.update_neural_network(states, actions, discounted_returns)
 
         self.save_nn(
-            f"models/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}_reinforce.pt"
+            f"models/nn_{self.env.grid_size}_{self.num_agents}_{self.env.dispersion_inc}_reinforce.pt"
         )
         return statistics
     
