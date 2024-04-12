@@ -2,6 +2,7 @@ import logging
 import torch
 import numpy as np
 from DSSE import DroneSwarmSearch
+from config import get_opt
 
 NUM_TOP_POSITIONS = 10
 class Reinforce:
@@ -69,13 +70,13 @@ class ReinforceAgent(Reinforce):
 
         self.num_agents = len(env.possible_agents)
         self.num_entries = (self.num_agents + self.num_top_positions) * 2
-        self.num_actions = len(env.action_space("drone0"))
+        self.num_actions = (env.action_space("drone0").n)
 
         self.nn = self.create_neural_network().to(self.device)
         self.optimizer = self.create_optimizer(self.nn.parameters())
 
         logging.basicConfig(
-            filename=f"logs/training_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}_reinforce.log",
+            filename=f"logs/training_{self.env.grid_size}_{self.num_agents}_{self.env.dispersion_inc}_reinforce.log",
             level=logging.INFO,
             format="[%(levelname)s] %(asctime)s - %(message)s",
             filemode="w",
@@ -161,8 +162,9 @@ class ReinforceAgent(Reinforce):
             if stop:
                 break
 
-            vector = self.get_random_speed_vector()
-            state = self.env.reset(vector=vector)
+            # vector = self.get_random_speed_vector()
+            print(get_opt())
+            state = self.env.reset(options=get_opt())
             obs_list = self.flatten_state(state)
             done = False
             actions, states, rewards = [], [], []
