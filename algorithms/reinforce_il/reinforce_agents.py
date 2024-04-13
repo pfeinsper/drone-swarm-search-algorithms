@@ -23,10 +23,11 @@ class ReinforceAgentsIL:
         self.num_actions = len(env.action_space("drone0"))
 
         self.agents: dict[str, ReinforceAgent] = {}
+        matrix_shape = (env.grid_size, env.grid_size)
         for index in range(self.num_agents):
             drone_name = f"drone{index}"
             self.agents[drone_name] = ReinforceAgent(
-                index, self.device, self.num_actions, self.num_entries, self.lr
+                index, self.device, self.num_actions, matrix_shape, self.num_agents, self.lr
             )
 
         logging.basicConfig(
