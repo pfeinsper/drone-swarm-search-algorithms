@@ -3,9 +3,9 @@ import pandas as pd
 from DSSE import DroneSwarmSearch
 from algorithms import ReinforceAgent, ReinforceAgentsIL, DQNAgents, DQNHyperparameters
 from config import EnvConfig, get_opt, get_config
-from file_utils import create_experiment_folder
 
 IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il", 'dql']
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a model to solve the DSSE problem.")
@@ -22,11 +22,6 @@ def parse_args():
         default=4,
         help="The configuration to train.",
         choices=range(1, 4 + 1),
-    )
-    parser.add_argument(
-        "--name",
-        type=str,
-        help="Name of the experiment.",
     )
     args = parser.parse_args()
     return args
@@ -57,10 +52,10 @@ def get_model(model_name, env, config):
                 learning_rate=1e-4,
                 gamma=0.999999,
                 epsilon=0.9,
-                epsilon_min=0.1,
-                epsilon_decay=100_000,
+                epsilon_min=0.05,
+                epsilon_decay=40_000,
                 batch_size=256,
-                memory_size=50_000,
+                memory_size=20_000,
                 tau=0.0005,
             )
             model = DQNAgents(env, hyperparameters, config)
@@ -89,8 +84,9 @@ if __name__ == "__main__":
         pre_render_time=config.pre_render_time,
     )
     model = get_model(model_name, env, config)
-    folder = create_experiment_folder(args.name)
+
     print(f"Training {model_name} with config {config}...")
+
     statistics = model.train()
     df = pd.DataFrame(statistics, columns=["episode", "actions", "rewards"])
     df.to_csv(
