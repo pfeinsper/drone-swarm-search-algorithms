@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from .dqn_hyperparameters import DQNHyperparameters
 from .dqn_agent import DQNAgent
+from config import get_opt
 
 
 class DQNAgents:
@@ -11,7 +12,7 @@ class DQNAgents:
         self.n_epochs = hyperparameters.max_episodes
         n_agents = len(env.get_agents())
         self.agents = [
-            DQNAgent(n_agents, len(env.action_space("drone0")), hyperparameters, index)
+            DQNAgent(n_agents, (env.action_space("drone0")), hyperparameters, index)
             for index in range(n_agents)
         ]
 
@@ -42,10 +43,12 @@ class DQNAgents:
 
             vector = self.get_random_speed_vector()
             
-            curr_state = self.env.reset(vector=vector, drones_positions=drones_initial_positions)
+            # curr_state = self.env.reset(vector=vector, drones_positions=drones_initial_positions)
+            curr_state, info = self.env.reset(options=get_opt())
             curr_state = self.transform_state(curr_state)
             done = False
             count_actions = total_reward = 0
+
 
             while not done:
                 total_steps += 1
@@ -56,14 +59,14 @@ class DQNAgents:
                 next_state = self.transform_state(next_state)
                 done = any(done.values())
                 if done:
-                    next_state = [None] * self.config.n_drones
+                    next_state = [None] * self.config.drone_amount
 
                 self.store_episode(curr_state, actions_tensors, reward_dict, next_state)
                 if total_steps >= batch_size:
                     self.train_nn()
 
-                count_actions += self.config.n_drones
-                total_reward += reward_dict["total_reward"]
+                count_actions += self.config.drone_amount
+                total_reward += sum(reward_dict.values())
 
                 curr_state = next_state
 

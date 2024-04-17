@@ -51,7 +51,7 @@ class DQNAgent:
                 return self.policy_net(state).max(1).indices.view(1, 1)
         else:
             return torch.tensor(
-                [[random.randrange(0, self.num_actions)]], device=self.device, dtype=torch.long
+                [[random.randrange(0, self.num_actions.n)]], device=self.device, dtype=torch.long
             )
             
 
@@ -120,14 +120,15 @@ class DQNAgent:
         return positions.flatten()
 
     def flatten_state(self, observations):
+
         drone_position = torch.tensor(
-            observations[self.name]["observation"][0],
+            observations[self.name][0],
             device=self.device,
         )
         others_position = torch.flatten(
             torch.tensor(
                 [
-                    observations[drone_idx]["observation"][0]
+                    observations[drone_idx][0]
                     for drone_idx in observations
                     if drone_idx != self.name
                 ],
@@ -135,8 +136,9 @@ class DQNAgent:
             )
         )
         flatten_top_probabilities = torch.tensor(
+            
             self.get_flatten_top_probabilities_positions(
-                observations[self.name]["observation"][1]
+                observations[self.name][1]
             ),
             device=self.device,
         )
