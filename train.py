@@ -52,10 +52,10 @@ def get_model(model_name, env, config):
                 learning_rate=1e-4,
                 gamma=0.999999,
                 epsilon=0.9,
-                epsilon_min=0.05,
-                epsilon_decay=40_000,
+                epsilon_min=0.1,
+                epsilon_decay=100_000,
                 batch_size=256,
-                memory_size=20_000,
+                memory_size=50_000,
                 tau=0.0005,
             )
             model = DQNAgents(env, hyperparameters, config)

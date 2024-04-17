@@ -172,7 +172,7 @@ class ReinforceAgentsIL:
                 num_entries=(num_agents + NUM_TOP_POSITIONS) * 2,
                 index=index,
             )
-        instance = cls(env, 0.9, 0, 0, [])
+        instance = ReinforceAgentsIL(env, 0.9, 0, 0, [])
         instance.agents = agents
         return instance
 
