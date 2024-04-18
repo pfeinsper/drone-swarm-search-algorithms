@@ -23,7 +23,6 @@ class Reinforce:
 
     def flatten_state(self, observations):
         flatten_all = []
-        print(observations)
         
         for drone_index in range(self.num_agents):
             drone_position = torch.tensor(
@@ -173,8 +172,7 @@ class ReinforceAgent(Reinforce):
 
             while not done:
                 episode_actions = self.select_actions(obs_list)
-                obs_list_, reward_dict, _, done, infos = self.env.step(episode_actions)
-
+                obs_list_, reward_dict, term, trunc, infos = self.env.step(episode_actions)
                 actions.append(
                     torch.tensor(list(episode_actions.values()), dtype=torch.int)
                 )
@@ -183,7 +181,7 @@ class ReinforceAgent(Reinforce):
                 obs_list = self.flatten_state(obs_list_)
                 count_actions += self.num_agents
                 total_reward += sum(reward_dict.values())
-                done = any(done.values())
+                done = any(term.values()) or any(trunc.values())
 
             show_rewards.append(total_reward)
             all_rewards.append(total_reward)
