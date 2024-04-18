@@ -23,6 +23,7 @@ class Reinforce:
 
     def flatten_state(self, observations):
         flatten_all = []
+        print(observations)
         
         for drone_index in range(self.num_agents):
             drone_position = torch.tensor(
@@ -164,6 +165,7 @@ class ReinforceAgent(Reinforce):
 
             # vector = self.get_random_speed_vector()
             observations, info = self.env.reset(options=get_opt())
+            # print(observations)
             obs_list = self.flatten_state(observations)
             done = False
             actions, states, rewards = [], [], []

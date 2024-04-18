@@ -27,7 +27,7 @@ def get_config(config_number: int) -> Tuple[EnvConfig, Dict[str, List[float]]]:
         render_mode="human",
         render_grid=True,
         render_gradient=True,
-        vector=(3.2, 3.1),
+        vector=(1, 1),
         timestep_limit=200,
         person_amount=2,
         dispersion_inc=0.1,
@@ -45,8 +45,8 @@ def get_config(config_number: int) -> Tuple[EnvConfig, Dict[str, List[float]]]:
 
     match config_number:
         case 1:
-            env_config.dispersion_inc = 0.01
-            env_config.drone_amount = 1
+            env_config.dispersion_inc = 0.1
+            env_config.drone_amount = 4
         case 2:
             env_config.dispersion_inc = 0.01
             env_config.drone_amount = 4

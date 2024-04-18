@@ -120,8 +120,10 @@ class DQNAgent:
         return positions.flatten()
 
     def flatten_state(self, observations):
+        # print(observations)
 
         drone_position = torch.tensor(
+            
             observations[self.name][0],
             device=self.device,
         )
