@@ -38,11 +38,6 @@ def get_config(config_number: int) -> Tuple[EnvConfig, Dict[str, List[float]]]:
         pre_render_time=0
     )
 
-    opt = {
-        "drones_positions": [(0, 0)],
-        "individual_pods": [1, 0.5]
-    }
-
     match config_number:
         case 1:
             env_config.dispersion_inc = 0.1
@@ -61,6 +56,4 @@ def get_config(config_number: int) -> Tuple[EnvConfig, Dict[str, List[float]]]:
 
 def get_opt() -> Dict[str, List[float]]:
     return {
-        # "drones_positions": [(0, 10), (0, 11)],
-        "individual_pods": [0.9, 0.5]
     }

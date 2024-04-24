@@ -1,10 +1,10 @@
 import argparse
-import pandas as pd
 from DSSE import DroneSwarmSearch
 from algorithms import ReinforceAgent, ReinforceAgentsIL, DQNAgents, DQNHyperparameters
-from config import EnvConfig, get_opt, get_config
+from config import get_opt, get_config
+from file_utils import create_experiment_folder
 
-IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il", 'dql']
+IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il"]
 
 
 def parse_args():
@@ -22,6 +22,12 @@ def parse_args():
         default=4,
         help="The configuration to train.",
         choices=range(1, 4 + 1),
+    )
+    parser.add_argument(
+        "--name",
+        type=str,
+        required=True,
+        help="Name of the experiment.",
     )
     args = parser.parse_args()
     return args
@@ -84,12 +90,9 @@ if __name__ == "__main__":
         pre_render_time=config.pre_render_time,
     )
     model = get_model(model_name, env, config)
+    folder = create_experiment_folder(args.name)
 
     print(f"Training {model_name} with config {config}...")
 
-    statistics = model.train()
-    df = pd.DataFrame(statistics, columns=["episode", "actions", "rewards"])
-    df.to_csv(
-        f"data/statistics_{config}_{model_name}.csv",
-        index=False,
-    )
+    model.train(folder)
+    
