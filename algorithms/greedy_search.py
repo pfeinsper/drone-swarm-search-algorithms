@@ -8,17 +8,17 @@ class GreedyAgent:
         Greedy approach: Rush and search for the greatest prob.
         """
         drone_actions = {}
-        prob_matrix = obs["drone0"]["observation"][1]
+        prob_matrix = obs["drone0"][1]
         n_drones = len(agents)
 
-        drones_positions = {drone: obs[drone]["observation"][0] for drone in agents}
+        drones_positions = {drone: obs[drone][0] for drone in agents}
         # Get n_drones greatest probabilities.
         greatest_probs = np.argsort(prob_matrix, axis=None)[-n_drones:]
 
         for index, drone in enumerate(agents):
             greatest_prob = np.unravel_index(greatest_probs[index], prob_matrix.shape)
 
-            drone_obs = obs[drone]["observation"]
+            drone_obs = obs[drone]
             drone_action = self.choose_drone_action(drone_obs[0], greatest_prob)
 
             new_position = self.get_new_position(drone_obs[0], drone_action)

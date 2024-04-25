@@ -2,6 +2,9 @@ import logging
 import torch
 import numpy as np
 from DSSE import DroneSwarmSearch
+from config import get_opt
+from .training_utils import config_log, get_random_speed_vector, log_episode_stats, init_results_writer
+
 
 NUM_TOP_POSITIONS = 10
 class Reinforce:
@@ -22,16 +25,16 @@ class Reinforce:
 
     def flatten_state(self, observations):
         flatten_all = []
-
+        
         for drone_index in range(self.num_agents):
             drone_position = torch.tensor(
-                observations["drone" + str(drone_index)]["observation"][0],
+                observations["drone" + str(drone_index)][0],
                 device=self.device,
             )
             others_position = torch.flatten(
                 torch.tensor(
                     [
-                        observations["drone" + str(index)]["observation"][0]
+                        observations["drone" + str(index)][0]
                         for index in range(self.num_agents)
                         if index != drone_index
                     ],
@@ -40,7 +43,7 @@ class Reinforce:
             )
             flatten_top_probabilities = torch.tensor(
                 self.get_flatten_top_probabilities_positions(
-                    observations["drone" + str(drone_index)]["observation"][1]
+                    observations["drone" + str(drone_index)][1]
                 ),
                 device=self.device,
             )
@@ -51,12 +54,6 @@ class Reinforce:
             )
 
         return flatten_all
-
-    def get_random_speed_vector(self):
-        return [
-            round(np.random.uniform(-0.1, 0.1), 1),
-            round(np.random.uniform(-0.1, 0.1), 1),
-        ]
 
 
 class ReinforceAgent(Reinforce):
@@ -69,17 +66,11 @@ class ReinforceAgent(Reinforce):
 
         self.num_agents = len(env.possible_agents)
         self.num_entries = (self.num_agents + self.num_top_positions) * 2
-        self.num_actions = len(env.action_space("drone0"))
+        self.num_actions = (env.action_space("drone0").n)
 
         self.nn = self.create_neural_network().to(self.device)
         self.optimizer = self.create_optimizer(self.nn.parameters())
-
-        logging.basicConfig(
-            filename=f"logs/training_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}_reinforce.log",
-            level=logging.INFO,
-            format="[%(levelname)s] %(asctime)s - %(message)s",
-            filemode="w",
-        )
+        self.results_folder = None
 
     def create_neural_network(self):
         dtype = torch.float
@@ -112,16 +103,6 @@ class ReinforceAgent(Reinforce):
         ]
         return rewards
 
-    def print_episode_stats(self, episode_num, show_actions, show_rewards):
-        actions_mean = sum(show_actions) / len(show_actions)
-        rewards_mean = sum(show_rewards) / len(show_rewards)
-        logging.info(
-            "Episode = %s, Actions (mean) = %s, Reward (mean) = %s",
-            episode_num,
-            actions_mean,
-            rewards_mean,
-        )
-
     def calculate_discounted_returns(self, rewards):
         discounted_returns = []
         for t in range(len(rewards)):
@@ -151,27 +132,33 @@ class ReinforceAgent(Reinforce):
                 self.optimizer.step()
 
     def save_nn(self, path):
+        path = f"{self.results_folder}/{path}"
         torch.save(self.nn, path)
 
-    def train(self):
-        statistics, show_rewards, show_actions, all_rewards = [], [], [], []
+    def train(self, results_folder):
+        config_log(results_folder)
+        writer, res_file = init_results_writer(results_folder)
+        self.results_folder = results_folder
+        
+        show_rewards, show_actions, all_rewards = [], [], []
         stop = False
 
         for i in range(self.episodes + 1):
             if stop:
                 break
 
-            vector = self.get_random_speed_vector()
-            state = self.env.reset(vector=vector)
-            obs_list = self.flatten_state(state)
+            options = get_opt()
+            options["vector"] = get_random_speed_vector()
+
+            observations, _ = self.env.reset(options=options)
+            obs_list = self.flatten_state(observations)
             done = False
             actions, states, rewards = [], [], []
             count_actions, total_reward = 0, 0
 
             while not done:
                 episode_actions = self.select_actions(obs_list)
-                obs_list_, reward_dict, _, done, infos = self.env.step(episode_actions)
-
+                obs_list_, reward_dict, term, trunc, _ = self.env.step(episode_actions)
                 actions.append(
                     torch.tensor(list(episode_actions.values()), dtype=torch.int)
                 )
@@ -179,8 +166,8 @@ class ReinforceAgent(Reinforce):
                 rewards.append(self.extract_rewards(reward_dict))
                 obs_list = self.flatten_state(obs_list_)
                 count_actions += self.num_agents
-                total_reward += reward_dict["total_reward"]
-                done = any(done.values())
+                total_reward += sum(reward_dict.values())
+                done = any(term.values()) or any(trunc.values())
 
             show_rewards.append(total_reward)
             all_rewards.append(total_reward)
@@ -192,21 +179,21 @@ class ReinforceAgent(Reinforce):
                     logging.info("Early stopping")
 
             if i % 100 == 0:
-                self.print_episode_stats(i, show_actions, show_rewards)
+                log_episode_stats(i, show_actions, show_rewards)
                 show_rewards, show_actions = [], []
             if i % 5_000 == 0:
                 self.save_nn(
-                    f"checkpoints/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}.pt"
+                    f"checkpoints/nn_reinforce.pt"
                 )
 
-            statistics.append([i, count_actions, total_reward])
+            writer.writerow([i, count_actions, total_reward])
             discounted_returns = self.calculate_discounted_returns(rewards)
             self.update_neural_network(states, actions, discounted_returns)
 
         self.save_nn(
-            f"models/nn_{self.env.grid_size}_{self.num_agents}_{self.env.disperse_constant}_reinforce.pt"
+            f"models/nn_reinforce.pt"
         )
-        return statistics
+        res_file.close()
     
 
     @classmethod

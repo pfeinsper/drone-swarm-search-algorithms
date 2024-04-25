@@ -1,10 +1,10 @@
 import argparse
-import pandas as pd
 from DSSE import DroneSwarmSearch
 from algorithms import ReinforceAgent, ReinforceAgentsIL, DQNAgents, DQNHyperparameters
-from config import get_config
+from config import get_opt, get_config
+from file_utils import create_experiment_folder
 
-IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il", 'dql']
+IMPLEMENTED_MODELS = ["reinforce", "dqn", "reinforce_il"]
 
 
 def parse_args():
@@ -23,6 +23,12 @@ def parse_args():
         help="The configuration to train.",
         choices=range(1, 4 + 1),
     )
+    parser.add_argument(
+        "--name",
+        type=str,
+        required=True,
+        help="Name of the experiment.",
+    )
     args = parser.parse_args()
     return args
 
@@ -36,7 +42,7 @@ def get_model(model_name, env, config):
                 y=0.999999,
                 lr=0.000001,
                 episodes=100_000,
-                drones_initial_positions=config.drones_initial_positions,
+                drones_initial_positions=get_opt(),
             )
         case "reinforce_il":
             model = ReinforceAgentsIL(
@@ -44,7 +50,7 @@ def get_model(model_name, env, config):
                 gamma=0.999999,
                 lr=0.000001,
                 episodes=100_000,
-                drones_initial_positions=config.drones_initial_positions,
+                drones_initial_positions=get_opt(),
             )
         case "dqn":
             hyperparameters = DQNHyperparameters(
@@ -73,18 +79,20 @@ if __name__ == "__main__":
         render_mode="ansi",
         render_grid=False,
         render_gradient=False,
-        n_drones=config.n_drones,
-        person_initial_position=config.person_initial_position,
-        disperse_constant=config.disperse_constant,
+        vector=config.vector,
         timestep_limit=config.timestep_limit,
+        person_amount=config.person_amount,
+        dispersion_inc=config.dispersion_inc,
+        person_initial_position=config.person_initial_position,
+        drone_amount=config.drone_amount,
+        drone_speed=config.drone_speed,
+        probability_of_detection=config.probability_of_detection,
+        pre_render_time=config.pre_render_time,
     )
     model = get_model(model_name, env, config)
+    folder = create_experiment_folder(args.name)
 
     print(f"Training {model_name} with config {config}...")
 
-    statistics = model.train()
-    df = pd.DataFrame(statistics, columns=["episode", "actions", "rewards"])
-    df.to_csv(
-        f"data/statistics_{config}_{model_name}.csv",
-        index=False,
-    )
+    model.train(folder)
+    

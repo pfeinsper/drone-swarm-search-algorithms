@@ -137,11 +137,16 @@ if __name__ == "__main__":
         grid_size=config.grid_size,
         render_mode=RENDER_MODE,
         render_grid=True,
-        n_drones=config.n_drones,
+        render_gradient=config.render_gradient,
         vector=config.vector,
-        person_initial_position=config.person_initial_position,
-        disperse_constant=config.disperse_constant,
         timestep_limit=config.timestep_limit,
+        person_amount=config.person_amount,
+        dispersion_inc=config.dispersion_inc,
+        person_initial_position=config.person_initial_position,
+        drone_amount=config.drone_amount,
+        drone_speed=config.drone_speed,
+        probability_of_detection=config.probability_of_detection,
+        pre_render_time=config.pre_render_time,
     )
     print(f"Using config: {config}")
     model = get_model(args.policy, env, config, args.checkpoint)
