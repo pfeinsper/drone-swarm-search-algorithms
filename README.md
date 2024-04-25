@@ -17,4 +17,4 @@ This repo contains multiple implementations of algorithms for the [DSSE](https:/
 
 ## Support
 
-If you encounter any issues or have questions, please file an issue on our [GitHub issues page](https://github.com/pfeinsper/drone-swarm-search/issues).
+If you encounter any issues or have questions, please file an issue on our [GitHub issues page](https://github.com/pfeinsper/drone-swarm-search-algorithms/issues).
