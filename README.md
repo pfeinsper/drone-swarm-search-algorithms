@@ -3,7 +3,7 @@
 [![PettingZoo version dependency](https://img.shields.io/badge/PettingZoo-v1.22.3-blue)]()
 ![GitHub stars](https://img.shields.io/github/stars/pfeinsper/drone-swarm-search-algorithms)
 
-# ![DSSE Icon](https://github.com/pfeinsper/drone-swarm-search-algorithms/blob/main/imgs/drone1.ico) Algorithms for Drone Swarm Search (DSSE)
+# <img src="https://github.com/pfeinsper/drone-swarm-search-algorithms/blob/main/imgs/drone.svg" alt="DSSE Icon" width="64" height="30"> Algorithms for Drone Swarm Search (DSSE)
 
 Welcome to the official repository for algorithms tailored to the Drone Swarm Search (DSSE) reinforcement learning environment. Explore a variety of algorithm implementations designed to optimize drone coordination and search efficiency.
 
