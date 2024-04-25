@@ -5,13 +5,17 @@
 
 # <img src="https://github.com/pfeinsper/drone-swarm-search-algorithms/blob/main/imgs/drone.svg" alt="DSSE Icon" width="45" height="25"> Algorithms for Drone Swarm Search (DSSE)
 
-Welcome to the official repository for algorithms tailored to the Drone Swarm Search (DSSE) reinforcement learning environment. Explore a variety of algorithm implementations designed to optimize drone coordination and search efficiency.
+Welcome to the official GitHub repository for the Drone Swarm Search (DSSE) algorithms. These algorithms are specifically tailored for reinforcement learning environments aimed at optimizing drone swarm coordination and search efficiency.
+
+Explore a diverse range of implementations that leverage the latest advancements in machine learning to solve complex coordination tasks in dynamic and unpredictable environments.
 
 ## 📚 Documentation Links
 
-- **[Documentation Site](https://pfeinsper.github.io/drone-swarm-search/)**: Find extensive resources including tutorials, usage examples, and technical details. This site serves as a central hub for understanding the DSSE framework and how to effectively deploy these algorithms in your projects.
+- **[Documentation Site](https://pfeinsper.github.io/drone-swarm-search/)**: Access detailed tutorials, usage examples, and comprehensive technical documentation. This resource is essential for understanding the DSSE framework and integrating these algorithms into your projects effectively.
 
-- **[PyPI Repository](https://pypi.org/project/DSSE/)**: Access the latest version of DSSE, view the release history, and read through the installation guide. Stay updated with the most recent developments and enhancements.
+- **[DSSE Training Environment Repository](https://github.com/pfeinsper/drone-swarm-search)**: Visit the repository for the DSSE training environment, where you can access the core environment setups and configurations used for developing and testing the algorithms.
+
+- **[PyPI Repository](https://pypi.org/project/DSSE/)**: Download the latest release of DSSE, view the version history, and find installation instructions. Keep up with the latest updates and improvements to the algorithms.
 
 ## 🆘 Support and Community
 
