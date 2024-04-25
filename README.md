@@ -14,3 +14,7 @@ This repo contains multiple implementations of algorithms for the [DSSE](https:/
 - **[Algorithm Details](https://github.com/pfeinsper/drone-swarm-search-algorithms)**: Explore in-depth discussions and source code for the algorithms powering the DSSE. This section is perfect for developers interested in the technical underpinnings and enhancements of the search algorithms.
 
 - **[PyPI Repository](https://pypi.org/project/DSSE/)**: Visit the PyPI page for DSSE to download the latest release, view release histories, and read additional installation instructions.
+
+## Support
+
+If you encounter any issues or have questions, please file an issue on our [GitHub issues page](https://github.com/pfeinsper/drone-swarm-search/issues).
