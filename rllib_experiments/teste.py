@@ -1,17 +1,18 @@
 import os
 import pathlib
-from DSSE import DroneSwarmSearch
+from drone_swarm_search.DSSE import DroneSwarmSearch
 from wrappers import AllPositionsWrapper, RetainDronePosWrapper, TopNProbsWrapper
-# from DSSE.environment.wrappers import TopNProbsWrapper
+# from DSSE.environment.wrappers import AllPositionsWrapper
 import ray
 from ray import tune
-from ray.rllib.algorithms.ppo import PPOConfig
+from ray.rllib.algorithms.dqn import DQNConfig
 from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.tune.registry import register_env
 import torch
 from torch import nn
+import random
 
 
 class MLPModel(TorchModelV2, nn.Module):
@@ -30,12 +31,23 @@ class MLPModel(TorchModelV2, nn.Module):
         )
         nn.Module.__init__(self)
 
+        # self.model = nn.Sequential(
+        #     nn.Linear(obs_space.shape[0], 1024),
+        #     nn.ReLU(),
+        #     nn.Linear(1024, 512),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5),  # Adicionando dropout para regularização
+        #     nn.Linear(512, 256),
+        #     nn.ReLU(),
+        # )
+        
         self.model = nn.Sequential(
             nn.Linear(obs_space.shape[0], 512),
             nn.ReLU(),
             nn.Linear(512, 256),
             nn.ReLU(),
         )
+        
         self.policy_fn = nn.Linear(256, num_outputs)
         self.value_fn = nn.Linear(256, 1)
 
@@ -49,15 +61,28 @@ class MLPModel(TorchModelV2, nn.Module):
     def value_function(self):
         return self._value_out.flatten()
 
+def ramdom_position(centro_x, centro_y, alcance, num_posicoes=4):
+    # Gerar todas as posições possíveis dentro do alcance
+    posicoes_possiveis = [(x, y) for x in range(centro_x - alcance, centro_x + alcance + 1)
+                          for y in range(centro_y - alcance, centro_y + alcance + 1)]
+
+    # Selecionar num_posicoes posições aleatoriamente das possíveis
+    posicoes_aleatorias = random.sample(posicoes_possiveis, num_posicoes)
+
+    return posicoes_aleatorias
 
 def env_creator(args):
     env = DroneSwarmSearch(
         drone_amount=4,
         grid_size=20,
-        dispersion_inc=0.1,
+        dispersion_inc=0.08,
         person_initial_position=(10, 10),
+        person_amount=5,
+        render_mode="ansi",
     )
+    
     env = TopNProbsWrapper(env, 10)
+    env = RetainDronePosWrapper(env, ramdom_position(10, 10, 3, 4))
     return env
 
 
@@ -68,41 +93,48 @@ if __name__ == "__main__":
 
     register_env(env_name, lambda config: ParallelPettingZooEnv(env_creator(config)))
     ModelCatalog.register_custom_model("MLPModel", MLPModel)
-
+    
+    replay_config = {
+        "type": "MultiAgentPrioritizedReplayBuffer",
+        "capacity": 50000,
+        "prioritized_replay_alpha": 0.8,
+        "prioritized_replay_beta": 0.6,
+        "prioritized_replay_eps": 3e-4,
+    }
+    
     config = (
-        PPOConfig()
+        DQNConfig()
         .environment(env=env_name)
-        .rollouts(num_rollout_workers=5, rollout_fragment_length="auto")
+        .rollouts(num_rollout_workers=8, rollout_fragment_length=128)
+        .framework("torch")
+        .resources(num_gpus=0)
         .training(
-            train_batch_size=8192,
-            lr=4e-5,
-            gamma=0.99999,
-            lambda_=0.9,
-            use_gae=True,
-            clip_param=0.4,
-            grad_clip=None,
-            entropy_coeff=0.1,
-            vf_loss_coeff=0.25,
-            vf_clip_param=4200,
-            sgd_minibatch_size=1024,
-            num_sgd_iter=10,
+            lr=1e-4,
+            # lr_schedule= [[timestep, value], [timestep, value],],
+            tau=0.01,
+            noisy=True,
+            gamma=0.99995,
+            train_batch_size=512,
+            replay_buffer_config=replay_config,
             model={
                 "custom_model": "MLPModel",
                 "_disable_preprocessor_api": True,
             },
+            target_network_update_freq=800,
+            double_q=False,
         )
-        .experimental(_disable_preprocessor_api=True)
-        .debugging(log_level="ERROR")
-        .framework(framework="torch")
-        .resources(num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "1")))
     )
 
     curr_path = pathlib.Path().resolve()
     tune.run(
-        "PPO",
-        name="PPO",
-        stop={"timesteps_total": 5000000 if not os.environ.get("CI") else 50000},
+        "DQN",
+        name="DSSE",
+        stop={"timesteps_total": 5_000_000 if not os.environ.get("CI") else 50_000},
         checkpoint_freq=10,
+        # local_dir=local_dir,
         storage_path=f"{curr_path}/ray_res/" + env_name,
         config=config.to_dict(),
     )
+    
+# Finalize Ray to free up resources
+ray.shutdown()

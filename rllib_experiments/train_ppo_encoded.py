@@ -1,6 +1,7 @@
 import os
 from DSSE import DroneSwarmSearch
-from DSSE.environment.wrappers.matrix_encode_wrapper import MatrixEncodeWrapper
+from wrappers import AllPositionsWrapper, RetainDronePosWrapper
+# from DSSE.environment.wrappers import AllPositionsWrapper, RetainDronePosWrapper
 import ray
 from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig

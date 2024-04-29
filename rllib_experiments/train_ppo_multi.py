@@ -1,7 +1,8 @@
 import os
 import pathlib
 from DSSE import DroneSwarmSearch
-from DSSE.environment.wrappers import AllPositionsWrapper
+from wrappers import AllPositionsWrapper, RetainDronePosWrapper, TopNProbsWrapper
+# from DSSE.environment.wrappers import AllPositionsWrapper
 import ray
 from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
@@ -144,7 +145,7 @@ if __name__ == "__main__":
         .experimental(_disable_preprocessor_api=True)
         .debugging(log_level="ERROR")
         .framework(framework="torch")
-        .resources(num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "1")))
+        .resources(num_gpus=0)
     )
 
     curr_path = pathlib.Path().resolve()
