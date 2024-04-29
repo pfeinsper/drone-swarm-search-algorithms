@@ -1,7 +1,7 @@
 import os
 import pathlib
 import PygameRecord
-from DSSE import DroneSwarmSearch
+from drone_swarm_search.DSSE import DroneSwarmSearch
 from wrappers import AllPositionsWrapper, RetainDronePosWrapper, TopNProbsWrapper
 import ray
 from ray.rllib.algorithms.dqn import DQNConfig
