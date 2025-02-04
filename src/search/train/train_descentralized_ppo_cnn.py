@@ -1,18 +1,18 @@
-import os
 import pathlib
-from drone_swarm_search.DSSE import DroneSwarmSearch
-from drone_swarm_search.DSSE.environment.wrappers import AllPositionsWrapper, RetainDronePosWrapper, TopNProbsWrapper
-# from DSSE.environment.wrappers import AllPositionsWrapper
+from DSSE import DroneSwarmSearch
+from DSSE.environment.wrappers import RetainDronePosWrapper, AllPositionsWrapper
 import ray
 from ray import tune
-from ray.rllib.algorithms.dqn import DQNConfig
+from ray.rllib.core.rl_module.rl_module import SingleAgentRLModuleSpec
+from ray.rllib.core.rl_module.marl_module import MultiAgentRLModuleSpec
+from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.tune.registry import register_env
 import torch
 from torch import nn
-import random
+
 
 class CNNModel(TorchModelV2, nn.Module):
     def __init__(
@@ -30,7 +30,9 @@ class CNNModel(TorchModelV2, nn.Module):
         )
         nn.Module.__init__(self)
 
-        flatten_size = 32 * (obs_space[1].shape[0] - 7 - 3) * (obs_space[1].shape[1] - 7 - 3)
+        flatten_size = (
+            32 * (obs_space[1].shape[0] - 7 - 3) * (obs_space[1].shape[1] - 7 - 3)
+        )
         self.cnn = nn.Sequential(
             nn.Conv2d(
                 in_channels=1,
@@ -62,7 +64,7 @@ class CNNModel(TorchModelV2, nn.Module):
             nn.Linear(256 * 2, 256),
             nn.Tanh(),
         )
-        
+
         self.policy_fn = nn.Linear(256, num_outputs)
         self.value_fn = nn.Linear(256, 1)
 
@@ -76,12 +78,13 @@ class CNNModel(TorchModelV2, nn.Module):
 
         value_input = torch.cat((cnn_out, linear_out), dim=1)
         value_input = self.join(value_input)
-        
+
         self._value_out = self.value_fn(value_input)
         return self.policy_fn(value_input), state
 
     def value_function(self):
         return self._value_out.flatten()
+
 
 def env_creator(args):
     env = DroneSwarmSearch(
@@ -103,55 +106,58 @@ def env_creator(args):
 
 if __name__ == "__main__":
     ray.init()
-
     env_name = "DSSE"
 
     register_env(env_name, lambda config: ParallelPettingZooEnv(env_creator(config)))
     ModelCatalog.register_custom_model("CNNModel", CNNModel)
 
-    natural_value = 512/(14*20*1)
+    # Policies are called just like the agents (exact 1:1 mapping).
+    num_agents = 4
+    policies = {f"drone{i}" for i in range(num_agents)}
+    # policies = {f"drone{i}": (None, obs_space, act_space, {}) for i in range(num_agents)}
+
     config = (
-        DQNConfig()
-        .exploration(
-            exploration_config={
-                "type": "EpsilonGreedy",
-                "initial_epsilon": 1.0,
-                "final_epsilon": 0.15,
-                "epsilon_timesteps": 400_000,
-            }
-        )
+        PPOConfig()
         .environment(env=env_name)
-        .rollouts(num_rollout_workers=14, rollout_fragment_length=20)
-        .framework("torch")
-        .debugging(log_level="ERROR")
-        .resources(num_gpus=1)
-        .experimental(_disable_preprocessor_api=True)
+        .rollouts(num_rollout_workers=4, rollout_fragment_length="auto")
+        .multi_agent(
+            policies=policies,
+            # Exact 1:1 mapping from AgentID to ModuleID.
+            policy_mapping_fn=(lambda aid, *args, **kwargs: aid),
+        )
         .training(
-            lr=1e-4,
+            train_batch_size=8192,
+            lr=1e-5,
             gamma=0.9999999,
-            tau=0.01,
-            train_batch_size=512,
+            lambda_=0.9,
+            use_gae=True,
+            entropy_coeff=0.01,
+            sgd_minibatch_size=300,
+            num_sgd_iter=10,
             model={
                 "custom_model": "CNNModel",
                 "_disable_preprocessor_api": True,
             },
-            target_network_update_freq=500,
-            double_q=False,
-            training_intensity=natural_value,
-            v_min=0,
-            v_max=2,
         )
+        .rl_module(
+            model_config_dict={"vf_share_layers": True},
+            rl_module_spec=MultiAgentRLModuleSpec(
+                module_specs={p: SingleAgentRLModuleSpec() for p in policies},
+            ),
+        )
+        .experimental(_disable_preprocessor_api=True)
+        .debugging(log_level="ERROR")
+        .framework(framework="torch")
+        .resources(num_gpus=1)
     )
 
     curr_path = pathlib.Path().resolve()
     tune.run(
-        "DQN",
-        name="DQN_DSSE",
-        stop={"timesteps_total": 100_000_000},
-        checkpoint_freq=200,
+        "PPO",
+        name="PPO",
+        stop={"timesteps_total": 5_000_000},
+        checkpoint_freq=30,
+        keep_checkpoints_num=200,
         storage_path=f"{curr_path}/ray_res/" + env_name,
-        config=config.to_dict(),
+        config=config,
     )
-    
-# Finalize Ray to free up resources
-ray.shutdown()
