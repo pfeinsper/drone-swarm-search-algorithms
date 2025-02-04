@@ -14,7 +14,7 @@ def env_creator(args):
     N_AGENTS = 2
     # 6 hours of simulation, 600 radius
     env = CoverageDroneSwarmSearch(
-        timestep_limit=200, drone_amount=N_AGENTS, prob_matrix_path="min_matrix.npy"
+        timestep_limit=200, drone_amount=N_AGENTS, prob_matrix_path="data/min_matrix.npy"
     )
     env = AllFlattenWrapper(env)
     grid_size = env.grid_size
@@ -82,13 +82,12 @@ def main(args):
         .resources(num_gpus=1)
     )
 
-    curr_path = pathlib.Path().resolve()
     tune.run(
         "PPO",
-        name="PPO_" + input("Exp name: "),
+        name="PPO_" + args.exp_name,
         # resume=True,
         stop={"timesteps_total": 40_000_000},
         checkpoint_freq=25,
-        storage_path=f"{curr_path}/ray_res/" + env_name,
+        storage_path=args.storage_path + env_name,
         config=config.to_dict(),
     )
