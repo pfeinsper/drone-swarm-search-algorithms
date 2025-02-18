@@ -7,9 +7,10 @@ import argparse
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--file", type=str, required=True)
 argparser.add_argument("--checkpoint", type=str, required=False, default=None)
+argparser.add_argument("--matrix_path", type=str, required=False, default=None)
 argparser.add_argument("--see", action="store_true", default=False)
 argparser.add_argument("--storage_path", type=str, required=False, default=f"{Path().resolve()}/ray_results/")
-argparser.add_argument("--exp_name", type=str, required=False, default=str(datetime.datetime.now())) 
+argparser.add_argument("--exp_name", type=str, required=False, default=str(datetime.datetime.now()))
 args = argparser.parse_args()
 
 

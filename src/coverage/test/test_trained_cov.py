@@ -11,6 +11,10 @@ from src.utils.play_env import play_with_record, evaluate_agent_coverage
 
 
 def main(args):
+    if args.matrix_path is None:
+        print("Please provide a matrix path")
+        exit(1)
+
     # Register the model
     model = PpoCnnModel
     model.CONFIG = CNNConfig(kernel_sizes=[(3, 3), (2, 2)])
@@ -18,26 +22,21 @@ def main(args):
 
     def env_creator(_):
         print("-------------------------- ENV CREATOR --------------------------")
-        N_AGENTS = 8
-        # 6 hours of simulation, 600 radius
+        N_AGENTS = 2
         env = CoverageDroneSwarmSearch(
             timestep_limit=180,
             drone_amount=N_AGENTS,
-            prob_matrix_path="presim_20.npy",
+            prob_matrix_path=args.matrix_path,
             render_mode="human",
         )
         env = AllPositionsWrapper(env)
         grid_size = env.grid_size
-        positions = position_on_diagonal(grid_size, N_AGENTS)
+        positions = [
+            (grid_size - 1, grid_size // 2),
+            (0, grid_size // 2),
+        ]
         env = RetainDronePosWrapper(env, positions)
         return env
-
-    def position_on_diagonal(grid_size, drone_amount):
-        positions = []
-        center = grid_size // 2
-        for i in range(-drone_amount // 2, drone_amount // 2):
-            positions.append((center + i, center + i))
-        return positions
 
     env = env_creator(None)
     register_env(

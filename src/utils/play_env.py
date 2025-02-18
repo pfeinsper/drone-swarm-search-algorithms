@@ -60,7 +60,7 @@ def evaluate_agent_coverage(env, agent, n_evals=500):
             actions = {}
             for k, v in obs.items():
                 actions[k] = agent.compute_single_action(v, explore=False)
-            obs, rw, term, trunc, info = env.step(actions)
+            obs, rw, _, _, info = env.step(actions)
             reward_sum += sum(rw.values())
             i += 1
         rewards.append(reward_sum)
