@@ -1,7 +1,7 @@
 """
 Module to implement the A* algorithm for coverage path planning.
 """
-import time
+
 import argparse
 import numpy as np
 from DSSE import CoverageDroneSwarmSearch, Actions
@@ -26,35 +26,47 @@ class DroneState(State):
         self.visited = visited
         self.action = None
 
-    def successors(self, allow_zeros: bool = False) -> list['DroneState']:
+    def successors(self, allow_zeros: bool = False) -> list["DroneState"]:
         successors = []
         x, y = self.position
 
         for action, (dx, dy) in MOVEMENTS.items():
             new_x, new_y = x + dx, y + dy
 
-            if 0 <= new_x < len(self.prob_matrix) and 0 <= new_y < len(self.prob_matrix[0]):
-                if allow_zeros or self.prob_matrix[new_x, new_y] > 0:
-                    new_state = DroneState((new_x, new_y), self.prob_matrix, self.visited | {(new_x, new_y)})
+            if 0 <= new_x < len(self.prob_matrix) and 0 <= new_y < len(
+                self.prob_matrix[0]
+            ):
+                if allow_zeros or self.prob_matrix[new_y, new_x] > 0:
+                    new_state = DroneState(
+                        (new_x, new_y),
+                        self.prob_matrix,
+                        self.visited | {(new_x, new_y)},
+                    )
                     new_state.set_action(action)
                     successors.append(new_state)
 
         return successors
 
-    def cost(self, prob_weight: int | float = 10, distance_weight: int | float = 0.5, revisit_penalty_value: int | float = 30) -> int | float:
-        x, y = self.position
-        prob_value = self.prob_matrix[x, y]
-
+    def cost(
+        self,
+        prob_weight: int | float = 10,
+        distance_weight: int | float = 0.5,
+        revisit_penalty_value: int | float = 30,
+    ) -> int | float:
         high_prob_indices = np.argwhere(self.prob_matrix > 0)
         number_of_high_prob = high_prob_indices.shape[0]
 
         if number_of_high_prob == 0:
-            return float('inf')
+            return float("inf")
 
-        distances = np.abs(high_prob_indices[:, 0] - x) + np.abs(high_prob_indices[:, 1] - y)
+        x, y = self.position
+        distances = np.abs(high_prob_indices[:, 1] - x) + np.abs(
+            high_prob_indices[:, 0] - y
+        )
         min_distance = np.min(distances)
 
         max_prob = np.max(self.prob_matrix)
+        prob_value = self.prob_matrix[y, x]
         normalized_prob = prob_value / max_prob if max_prob > 0 else 0
 
         max_distance = len(self.prob_matrix) + len(self.prob_matrix[0])
@@ -62,7 +74,9 @@ class DroneState(State):
 
         revisit_penalty = 0
         if (x, y) in self.visited:
-            revisit_penalty = revisit_penalty_value * (len(self.visited) / (number_of_high_prob + 1))
+            revisit_penalty = revisit_penalty_value * (
+                len(self.visited) / (number_of_high_prob + 1)
+            )
 
         heuristic_value = (
             -(normalized_prob * prob_weight)
@@ -74,32 +88,35 @@ class DroneState(State):
 
     def description(self):
         return f"DroneState Position = {self.position}"
-    
+
     def env(self):
         return self.position
-    
+
     def is_goal(self):
         return False
-    
+
     def set_action(self, action: Actions):
         self.action = action
 
     def get_action(self) -> Actions:
         return self.action if self.action else Actions.SEARCH
-    
-    def __eq__(self, other: 'DroneState') -> bool:
+
+    def __eq__(self, other: "DroneState") -> bool:
         position_eq = self.position == other.position
         visited_eq = self.visited == other.visited
         action_eq = self.action == other.action
         return position_eq and visited_eq and action_eq
 
-def a_star(observations: dict, agents: list, prob_matrix: np.ndarray, visited: set) -> dict:
+
+def a_star(
+    observations: dict, agents: list, prob_matrix: np.ndarray, visited: list[set]
+) -> dict:
     actions = {}
     will_visit = []
     for i, agent in enumerate(agents):
-        current_position = (observations[agent][0][0], observations[agent][0][1])
+        current_x, current_y = observations[agent][0]
 
-        drone_state = DroneState(current_position, prob_matrix, visited[i])
+        drone_state = DroneState((current_x, current_y), prob_matrix, visited[i])
 
         successors = drone_state.successors()
 
@@ -113,10 +130,11 @@ def a_star(observations: dict, agents: list, prob_matrix: np.ndarray, visited: s
         while next_state.position in will_visit:
             successors.remove(next_state)
             next_state = min(successors, key=lambda state: state.cost())
+
         will_visit.append(next_state.position)
         actions[agent] = next_state.get_action().value
         visited[i].add(next_state.position)
-        prob_matrix[current_position[0], current_position[1]] = 0
+        prob_matrix[current_y, current_x] = 0
 
     return actions
 
@@ -126,7 +144,7 @@ def main(num_drones: int):
         drone_amount=num_drones,
         render_mode="human",
         timestep_limit=200,
-        prob_matrix_path="src/min_matrix.npy"
+        prob_matrix_path="src/min_matrix.npy",
     )
 
     center = env.grid_size // 2
@@ -139,23 +157,17 @@ def main(num_drones: int):
         new_position = (center + x_offset, center + y_offset)
         positions.append(new_position)
 
-    opt = {
-        "drones_positions": positions
-    }
+    opt = {"drones_positions": positions}
 
-    observations, info = env.reset(options=opt)
-
+    observations, _ = env.reset(options=opt)
 
     visited = [set([opt["drones_positions"][i]]) for i in range(num_drones)]
 
     prob_matrix = env.probability_matrix.get_matrix()
-    step = 0
     while env.agents:
-        step += 1
+        actions = a_star(observations, env.agents, prob_matrix.copy(), visited)
+        observations, *_ = env.step(actions)
 
-        actions = a_star(observations, env.agents, prob_matrix, visited)
-        observations, rewards, terminations, truncations, infos = env.step(actions)
-        time.sleep(1)
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
