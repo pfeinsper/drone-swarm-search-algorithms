@@ -55,6 +55,8 @@ from ray import tune
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.algorithms.callbacks import DefaultCallbacks
 from ray.rllib.connectors.env_to_module import FlattenObservations
+from ray.rllib.algorithms.ppo import PPOConfig
+from ray.rllib.policy.policy import PolicySpec
 from icm_learners import (
     ICM_MODULE_ID,
     PPOTorchLearnerWithCuriosity,
@@ -94,7 +96,9 @@ def env_creator(_):
     N_AGENTS = 2
     # 6 hours of simulation, 600 radius
     env = CoverageDroneSwarmSearch(
-        timestep_limit=200, drone_amount=N_AGENTS, prob_matrix_path="min_matrix.npy"
+        timestep_limit=200,
+        drone_amount=N_AGENTS,
+        prob_matrix_path="../../../data/mat_9.npy",
     )
     env = AllFlattenWrapper(env)
     grid_size = env.grid_size
@@ -155,16 +159,20 @@ ENV_NAME = "DsseCoverage"
 
 def main(_):
     args = parser.parse_args()
+    assert args.num_agents > 0, "Must set --num-agents > 0 when running this script!"
+    assert (
+        args.enable_new_api_stack
+    ), "Must set --enable-new-api-stack when running this script!"
+
     register_env(ENV_NAME, lambda config: ParallelPettingZooEnv(env_creator(config)))
 
     if args.algo not in ["DQN", "PPO"]:
         raise ValueError(
             "Curiosity example only implemented for either DQN or PPO! See the "
         )
-
+    args.algo = "PPO"
     base_config = (
-        tune.registry.get_trainable_cls(args.algo)
-        .get_default_config()
+        PPOConfig()
         .environment(ENV_NAME)
         .env_runners(
             num_envs_per_env_runner=5 if args.algo == "PPO" else 1,
@@ -182,16 +190,25 @@ def main(_):
                 "forward_loss_weight": 0.2,
             }
         )
+        # TODO: Try to do this like in https://github.com/ray-project/ray/blob/master/rllib/examples/multi_agent/pettingzoo_independent_learning.py
+        .multi_agent(
+            policies={
+                "default_policy": PolicySpec(),
+            },
+            policy_mapping_fn=(lambda aid, *args, **kwargs: "default_policy"),
+        )
         .rl_module(
             rl_module_spec=MultiRLModuleSpec(
                 rl_module_specs={
                     # The "main" RLModule (policy) to be trained by our algo.
                     DEFAULT_MODULE_ID: RLModuleSpec(
-                        **(
-                            {"model_config": {"vf_share_layers": True}}
-                            if args.algo == "PPO"
-                            else {}
-                        ),
+                        model_config={
+                            "vf_share_layers": True,
+                            "actor_critic_encoder_config": {
+                                "fcnet_hiddens": [512, 256],
+                                "fcnet_activation": "relu",
+                            },
+                        }
                     ),
                     # The intrinsic curiosity model.
                     ICM_MODULE_ID: RLModuleSpec(
@@ -217,11 +234,7 @@ def main(_):
                 ICM_MODULE_ID: AlgorithmConfig.overrides(lr=0.0005)
             },
         )
-    )
-
-    # Set PPO-specific hyper-parameters.
-    if args.algo == "PPO":
-        base_config.training(
+        .training(
             num_epochs=6,
             # Plug in the correct Learner class.
             learner_class=PPOTorchLearnerWithCuriosity,
@@ -236,27 +249,46 @@ def main(_):
             minibatch_size=300,
             num_sgd_iter=10,
         )
-    elif args.algo == "DQN":
-        base_config.training(
-            # Plug in the correct Learner class.
-            learner_class=DQNTorchLearnerWithCuriosity,
-            train_batch_size_per_learner=128,
-            lr=0.00075,
-            replay_buffer_config={
-                "type": "PrioritizedEpisodeReplayBuffer",
-                "capacity": 500000,
-                "alpha": 0.6,
-                "beta": 0.4,
-            },
-            # Epsilon exploration schedule for DQN.
-            epsilon=[[0, 1.0], [500000, 0.05]],
-            n_step=(3, 5),
-            double_q=True,
-            dueling=True,
-        )
+    )
+
+    # Set PPO-specific hyper-parameters.
+    # if args.algo == "PPO":
+    #     base_config.training(
+    #         num_epochs=6,
+    #         # Plug in the correct Learner class.
+    #         learner_class=PPOTorchLearnerWithCuriosity,
+    #         train_batch_size_per_learner=8000,
+    #         train_batch_size=8192 * 3,
+    #         lr=8e-6,
+    #         gamma=0.9999999,
+    #         lambda_=0.9,
+    #         use_gae=True,
+    #         entropy_coeff=0.01,
+    #         vf_clip_param=100000,
+    #         minibatch_size=300,
+    #         num_sgd_iter=10,
+    #     )
+    # elif args.algo == "DQN":
+    #     base_config.training(
+    #         # Plug in the correct Learner class.
+    #         learner_class=DQNTorchLearnerWithCuriosity,
+    #         train_batch_size_per_learner=128,
+    #         lr=0.00075,
+    #         replay_buffer_config={
+    #             "type": "PrioritizedEpisodeReplayBuffer",
+    #             "capacity": 500000,
+    #             "alpha": 0.6,
+    #             "beta": 0.4,
+    #         },
+    #         # Epsilon exploration schedule for DQN.
+    #         epsilon=[[0, 1.0], [500000, 0.05]],
+    #         n_step=(3, 5),
+    #         double_q=True,
+    #         dueling=True,
+    #     )
 
     stop = {
-        f"{ENV_RUNNER_RESULTS}/{EPISODE_RETURN_MEAN}": args.stop_reward,  # TODO: Check graph for this value
+        f"{ENV_RUNNER_RESULTS}/{EPISODE_RETURN_MEAN}": 8000,  # TODO: Check graph for this value
         NUM_ENV_STEPS_SAMPLED_LIFETIME: 40_000_000,
     }
 
@@ -266,3 +298,7 @@ def main(_):
         args,
         stop=stop,
     )
+
+
+if __name__ == "__main__":
+    main(None)
