@@ -7,6 +7,8 @@ import numpy as np
 from DSSE import CoverageDroneSwarmSearch, Actions
 from aigyminsper.search.graph import State
 
+import pandas as pd
+
 MOVEMENTS = {
     Actions.UP: (0, -1),
     Actions.DOWN: (0, 1),
@@ -140,11 +142,14 @@ def a_star(
 
 
 def main(num_drones: int):
+
+    infos_list = []
+
     env = CoverageDroneSwarmSearch(
         drone_amount=num_drones,
         render_mode="human",
-        timestep_limit=200,
-        prob_matrix_path="src/min_matrix.npy",
+        timestep_limit=100,
+        prob_matrix_path="min_matrix.npy",
     )
 
     center = env.grid_size // 2
@@ -161,12 +166,21 @@ def main(num_drones: int):
 
     observations, _ = env.reset(options=opt)
 
+    step = 0
+
     visited = [set([opt["drones_positions"][i]]) for i in range(num_drones)]
 
     prob_matrix = env.probability_matrix.get_matrix()
     while env.agents:
         actions = a_star(observations, env.agents, prob_matrix.copy(), visited)
-        observations, *_ = env.step(actions)
+        observations, _, _, _, infos = env.step(actions)
+        step += 1
+        infos['drone0']['step'] = step
+        print(infos)
+        infos_list.append(infos['drone0'])
+    
+    df = pd.DataFrame(infos_list)
+    df.to_csv(f'results/a_star_{num_drones}.csv', index=False)
 
 
 if __name__ == "__main__":
