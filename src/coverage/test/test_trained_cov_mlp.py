@@ -6,27 +6,31 @@ from ray.tune.registry import register_env
 from ray.rllib.algorithms.ppo import PPO
 from src.utils.play_env import play_with_record, evaluate_agent_coverage
 
+def position_on_cross(grid_size, n_agents):
+    positions = [
+        (0, grid_size // 2),
+        (grid_size - 1, grid_size // 2),
+        (grid_size // 2, 0),
+        (grid_size // 2, grid_size - 1),
+    ]
+    return positions[:n_agents]
+
 
 def main(args):
     def env_creator(_):
         print("-------------------------- ENV CREATOR --------------------------")
-        N_AGENTS = 2
         render_mode = "human" if args.see else "ansi"
         # 6 hours of simulation, 600 radius
         env = CoverageDroneSwarmSearch(
             timestep_limit=200,
-            drone_amount=N_AGENTS,
-            prob_matrix_path="min_matrix.npy",
+            drone_amount=args.n_agents,
+            prob_matrix_path=args.matrix_path,
             render_mode=render_mode,
         )
         env = AllFlattenWrapper(env)
         grid_size = env.grid_size
         print("Grid size: ", grid_size)
-        positions = [
-            (0, grid_size // 2),
-            (grid_size - 1, grid_size // 2),
-        ]
-        env = RetainDronePosWrapper(env, positions)
+        env = RetainDronePosWrapper(env, position_on_cross(grid_size, args.n_agents))
         return env
 
     env = env_creator(None)
