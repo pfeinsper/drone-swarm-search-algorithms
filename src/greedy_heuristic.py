@@ -2,7 +2,7 @@ import numpy as np
 from DSSE import Actions
 from DSSE import DroneSwarmSearch
 from DSSE.environment.wrappers import RetainDronePosWrapper
-from recorder import PygameRecord
+from .utils.recorder import PygameRecord
 
 
 class GreedyAgent:
@@ -89,10 +89,12 @@ class GreedyAgent:
 
     def __repr__(self) -> str:
         return "greedy"
-    
+
 
 see = input("Want to see ?? (y/n): ")
 see = see.lower() == "y"
+
+
 def env_creator(_):
     env = DroneSwarmSearch(
         render_mode="human" if see else "ansi",
@@ -110,6 +112,7 @@ def env_creator(_):
     ]
     env = RetainDronePosWrapper(env, positions)
     return env
+
 
 greedy_agent = GreedyAgent()
 

@@ -1,23 +1,14 @@
-import os
-import pathlib
-from DSSE import DroneSwarmSearch
-from DSSE.environment.wrappers import RetainDronePosWrapper, AllPositionsWrapper
-from DSSE.environment.wrappers.communication_wrapper import CommunicationWrapper
-import ray
-from ray import tune
-from ray.rllib.algorithms.ppo import PPOConfig
-from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
-from ray.rllib.models import ModelCatalog
 from ray.rllib.models.torch.recurrent_net import RecurrentNetwork as TorchRNN
 from ray.rllib.models.modelv2 import ModelV2
 from ray.rllib.utils.annotations import override
 from ray.rllib.policy.rnn_sequencing import add_time_dimension
-from ray.tune.registry import register_env
 from torch import nn
 import torch
 
 
-class CNNModel(TorchRNN, nn.Module):
+class PpoCnnLstmModel(TorchRNN, nn.Module):
+    NAME = "PPO_CNN_LSTM"
+
     def __init__(
         self,
         obs_space,
@@ -32,7 +23,9 @@ class CNNModel(TorchRNN, nn.Module):
         nn.Module.__init__(self)
         super().__init__(obs_space, act_space, num_outputs, model_config, name, **kw)
 
-        flatten_size = 32 * (obs_space[1].shape[0] - 7 - 3) * (obs_space[1].shape[0] - 7 - 3)
+        flatten_size = (
+            32 * (obs_space[1].shape[0] - 7 - 3) * (obs_space[1].shape[0] - 7 - 3)
+        )
         self.cnn = nn.Sequential(
             nn.Conv2d(
                 in_channels=1,
@@ -75,13 +68,13 @@ class CNNModel(TorchRNN, nn.Module):
         # Place hidden states on same device as model.
         h = [
             self.linear.weight.new(1, self.lstm_state_size).zero_().squeeze(0),
-            self.linear.weight.new(1, self.lstm_state_size).zero_().squeeze(0)
+            self.linear.weight.new(1, self.lstm_state_size).zero_().squeeze(0),
         ]
         return h
-    
+
     def value_function(self):
         return self._value_out.flatten()
-    
+
     @override(ModelV2)
     def forward(
         self,
@@ -114,10 +107,10 @@ class CNNModel(TorchRNN, nn.Module):
 
         value_input = torch.cat((cnn_out, lstm_out), dim=1)
         value_input = self.join(value_input)
-        
+
         self._value_out = self.value_fn(value_input)
         return self.policy_fn(value_input), new_state
-    
+
     @override(TorchRNN)
     def forward_rnn(self, inputs, state, seq_lens):
         """Feeds `inputs` (B x T x ..) through the Gru Unit.
@@ -132,77 +125,8 @@ class CNNModel(TorchRNN, nn.Module):
         """
         linear_out = nn.functional.tanh(self.linear(inputs))
 
-        lstm_out, [h, c] = self.lstm(linear_out, [torch.unsqueeze(state[0], 0), torch.unsqueeze(state[1], 0)])
+        lstm_out, [h, c] = self.lstm(
+            linear_out, [torch.unsqueeze(state[0], 0), torch.unsqueeze(state[1], 0)]
+        )
 
         return lstm_out, [torch.squeeze(h, 0), torch.squeeze(c, 0)]
-
-
-def env_creator(args):
-    """
-    Petting Zoo environment for search of shipwrecked people.
-    check it out at
-        https://github.com/pfeinsper/drone-swarm-search
-    or install with
-        pip install DSSE
-    """
-    env = DroneSwarmSearch(
-        drone_amount=4,
-        grid_size=40,
-        dispersion_inc=0.1,
-        person_initial_position=(20, 20),
-    )
-    positions = [
-        (20, 0),
-        (20, 39),
-        (0, 20),
-        (39, 20),
-    ]
-    env = AllPositionsWrapper(env)
-    env = RetainDronePosWrapper(env, positions)
-    return env
-
-
-if __name__ == "__main__":
-    ray.init()
-
-    env_name = "DSSE"
-
-    register_env(env_name, lambda config: ParallelPettingZooEnv(env_creator(config)))
-    ModelCatalog.register_custom_model("CNNModel", CNNModel)
-
-    config = (
-        PPOConfig()
-        .environment(env=env_name)
-        .rollouts(num_rollout_workers=6, rollout_fragment_length="auto")
-        .training(
-            train_batch_size=4096,
-            lr=1e-5,
-            gamma=0.9999999,
-            lambda_=0.9,
-            use_gae=True,
-            entropy_coeff=0.01,
-            sgd_minibatch_size=300,
-            num_sgd_iter=10,
-            model={
-                "custom_model": "CNNModel",
-                "use_lstm": False,
-                "lstm_cell_size": 256,
-                "_disable_preprocessor_api": True,
-            },
-        )
-        .experimental(_disable_preprocessor_api=True)
-        .debugging(log_level="ERROR")
-        .framework(framework="torch")
-        .resources(num_gpus=1)
-    )
-
-    curr_path = pathlib.Path().resolve()
-    tune.run(
-        "PPO",
-        name="PPO_LSTM_M",
-        resume=True,
-        stop={"timesteps_total": 20_000_000, "episode_reward_mean": 1.82},
-        checkpoint_freq=15,
-        storage_path=f"{curr_path}/ray_res/" + env_name,
-        config=config.to_dict(),
-    )

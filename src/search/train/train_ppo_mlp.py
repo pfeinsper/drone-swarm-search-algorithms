@@ -9,7 +9,6 @@ from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.tune.registry import register_env
-import torch
 from torch import nn
 
 
@@ -41,7 +40,7 @@ class MLPModel(TorchModelV2, nn.Module):
     def forward(self, input_dict, state, seq_lens):
         input_ = input_dict["obs"].float()
         value_input = self.model(input_)
-        
+
         self._value_out = self.value_fn(value_input)
         return self.policy_fn(value_input), state
 

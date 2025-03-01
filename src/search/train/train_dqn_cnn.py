@@ -1,16 +1,17 @@
 import pathlib
-from DSSE import CoverageDroneSwarmSearch
-from DSSE.environment.wrappers import RetainDronePosWrapper, AllPositionsWrapper
+from DSSE import DroneSwarmSearch
+from DSSE.environment.wrappers import AllPositionsWrapper, RetainDronePosWrapper
+
+# from DSSE.environment.wrappers import AllPositionsWrapper
 import ray
 from ray import tune
-from ray.rllib.algorithms.ppo import PPOConfig
+from ray.rllib.algorithms.dqn import DQNConfig
 from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.tune.registry import register_env
-from torch import nn
 import torch
-import numpy as np
+from torch import nn
 
 
 class CNNModel(TorchModelV2, nn.Module):
@@ -29,21 +30,22 @@ class CNNModel(TorchModelV2, nn.Module):
         )
         nn.Module.__init__(self)
 
-        first_cnn_out = (obs_space[1].shape[0] - 3) + 1
-        second_cnn_out = (first_cnn_out - 2) + 1
-        flatten_size = 32 * second_cnn_out * second_cnn_out
-        print("Cnn Dense layer input size: ", flatten_size)
+        flatten_size = (
+            32 * (obs_space[1].shape[0] - 7 - 3) * (obs_space[1].shape[1] - 7 - 3)
+        )
         self.cnn = nn.Sequential(
             nn.Conv2d(
                 in_channels=1,
                 out_channels=16,
-                kernel_size=(3, 3),
+                kernel_size=(8, 8),
+                stride=(1, 1),
             ),
             nn.Tanh(),
             nn.Conv2d(
                 in_channels=16,
                 out_channels=32,
-                kernel_size=(2, 2),
+                kernel_size=(4, 4),
+                stride=(1, 1),
             ),
             nn.Tanh(),
             nn.Flatten(),
@@ -62,7 +64,7 @@ class CNNModel(TorchModelV2, nn.Module):
             nn.Linear(256 * 2, 256),
             nn.Tanh(),
         )
-        
+
         self.policy_fn = nn.Linear(256, num_outputs)
         self.value_fn = nn.Linear(256, 1)
 
@@ -76,92 +78,83 @@ class CNNModel(TorchModelV2, nn.Module):
 
         value_input = torch.cat((cnn_out, linear_out), dim=1)
         value_input = self.join(value_input)
-        
+
         self._value_out = self.value_fn(value_input)
         return self.policy_fn(value_input), state
 
     def value_function(self):
         return self._value_out.flatten()
 
+
 def env_creator(args):
-    print("-------------------------- ENV CREATOR --------------------------")
-    N_AGENTS = 2
-    # 6 hours of simulation, 600 radius
-    env = CoverageDroneSwarmSearch(
-        timestep_limit=200, drone_amount=N_AGENTS, prob_matrix_path="min_matrix.npy"
+    env = DroneSwarmSearch(
+        drone_amount=4,
+        grid_size=40,
+        dispersion_inc=0.1,
+        person_initial_position=(20, 20),
     )
-    env = AllPositionsWrapper(env)
-    grid_size = env.grid_size
-    # positions = position_on_diagonal(grid_size, N_AGENTS)
-    # positions = position_on_circle(grid_size, N_AGENTS, 2)
     positions = [
-        (grid_size - 1, grid_size // 2),
-        (0, grid_size // 2),
+        (20, 0),
+        (20, 39),
+        (0, 20),
+        (39, 20),
     ]
+    env = AllPositionsWrapper(env)
     env = RetainDronePosWrapper(env, positions)
     return env
-
-def position_on_diagonal(grid_size, drone_amount):
-    positions = []
-    center = grid_size // 2
-    for i in range(-drone_amount // 2, drone_amount // 2):
-        positions.append((center + i, center + i))
-    return positions
-
-def position_on_circle(grid_size, drone_amount, radius):
-    positions = []
-    center = grid_size // 2
-    angle_increment = 2 * np.pi / drone_amount
-
-    for i in range(drone_amount):
-        angle = i * angle_increment
-        x = center + int(radius * np.cos(angle))
-        y = center + int(radius * np.sin(angle))
-        positions.append((x, y))
-
-    return positions
 
 
 if __name__ == "__main__":
     ray.init()
 
-    env_name = "DSSE_Coverage"
+    env_name = "DSSE"
 
     register_env(env_name, lambda config: ParallelPettingZooEnv(env_creator(config)))
     ModelCatalog.register_custom_model("CNNModel", CNNModel)
 
+    natural_value = 512 / (14 * 20 * 1)
     config = (
-        PPOConfig()
+        DQNConfig()
+        .exploration(
+            exploration_config={
+                "type": "EpsilonGreedy",
+                "initial_epsilon": 1.0,
+                "final_epsilon": 0.15,
+                "epsilon_timesteps": 400_000,
+            }
+        )
         .environment(env=env_name)
-        .rollouts(num_rollout_workers=6, rollout_fragment_length="auto")
+        .rollouts(num_rollout_workers=14, rollout_fragment_length=20)
+        .framework("torch")
+        .debugging(log_level="ERROR")
+        .resources(num_gpus=1)
+        .experimental(_disable_preprocessor_api=True)
         .training(
-            train_batch_size=8192 * 5,
-            lr=6e-6,
+            lr=1e-4,
             gamma=0.9999999,
-            lambda_=0.9,
-            use_gae=True,
-            entropy_coeff=0.01,
-            vf_clip_param=100000,
-            sgd_minibatch_size=300,
-            num_sgd_iter=10,
+            tau=0.01,
+            train_batch_size=512,
             model={
                 "custom_model": "CNNModel",
                 "_disable_preprocessor_api": True,
             },
+            target_network_update_freq=500,
+            double_q=False,
+            training_intensity=natural_value,
+            v_min=0,
+            v_max=2,
         )
-        .experimental(_disable_preprocessor_api=True)
-        .debugging(log_level="ERROR")
-        .framework(framework="torch")
-        .resources(num_gpus=1)
     )
 
     curr_path = pathlib.Path().resolve()
     tune.run(
-        "PPO",
-        name="PPO_" + input("Exp name: "),
-        # resume=True,
-        stop={"timesteps_total": 20_000_000},
-        checkpoint_freq=20,
+        "DQN",
+        name="DQN_DSSE",
+        stop={"timesteps_total": 100_000_000},
+        checkpoint_freq=200,
         storage_path=f"{curr_path}/ray_res/" + env_name,
         config=config.to_dict(),
     )
+
+# Finalize Ray to free up resources
+ray.shutdown()

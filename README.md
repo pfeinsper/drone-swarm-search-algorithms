@@ -9,6 +9,35 @@ Welcome to the official GitHub repository for the Drone Swarm Search (DSSE) algo
 
 Explore a diverse range of implementations that leverage the latest advancements in machine learning to solve complex coordination tasks in dynamic and unpredictable environments.
 
+## How to run
+
+Arguments inside [brackets] are optional.
+
+#### Run a training script
+
+```sh
+python run_script --file <training_file> [--exp_name <name of your experiment>] [--n_agents <number of agents>]
+```
+
+Example: training a MLP on the coverage environment.
+```sh
+python run_script --file train_ppo_mlp_cov.py --exp_name training_mlp_cov
+```
+
+
+#### Run a test script
+
+```sh
+python run_script.py --file <test script name> --checkpoint <path to checkpoint to evaluate> [--matrix_path <path to matrix if coverage env>] [--see] [--n_agents <number of agents>]
+```
+
+The --see switch makes shows you the agents playing and records a GIF on the env instead of collecting metrics.
+
+Example: Evaluating 4 agents trained on coverage env
+```sh
+python run_script.py --file test_trained_cov_mlp.py --checkpoint <my_checkpoint_path> --matrix_path data/min_matrix.npy --n_agents 4
+```
+
 ## 📚 Documentation Links
 
 - **[Documentation Site](https://pfeinsper.github.io/drone-swarm-search/)**: Access detailed tutorials, usage examples, and comprehensive technical documentation. This resource is essential for understanding the DSSE framework and integrating these algorithms into your projects effectively.
