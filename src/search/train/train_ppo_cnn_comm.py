@@ -30,7 +30,9 @@ class CNNModel(TorchModelV2, nn.Module):
         )
         nn.Module.__init__(self)
 
-        flatten_size = 32 * (obs_space[1].shape[0] - 7 - 3) * (obs_space[1].shape[1] - 7 - 3)
+        flatten_size = (
+            32 * (obs_space[1].shape[0] - 7 - 3) * (obs_space[1].shape[1] - 7 - 3)
+        )
         self.cnn = nn.Sequential(
             nn.Conv2d(
                 in_channels=1,
@@ -62,7 +64,7 @@ class CNNModel(TorchModelV2, nn.Module):
             nn.Linear(256 * 2, 256),
             nn.Tanh(),
         )
-        
+
         self.policy_fn = nn.Linear(256, num_outputs)
         self.value_fn = nn.Linear(256, 1)
 
@@ -76,7 +78,7 @@ class CNNModel(TorchModelV2, nn.Module):
 
         value_input = torch.cat((cnn_out, linear_out), dim=1)
         value_input = self.join(value_input)
-        
+
         self._value_out = self.value_fn(value_input)
         return self.policy_fn(value_input), state
 
@@ -114,7 +116,9 @@ if __name__ == "__main__":
     config = (
         PPOConfig()
         .environment(env=env_name)
-        .rollouts(num_rollout_workers=6, rollout_fragment_length="auto", num_envs_per_worker=2)
+        .rollouts(
+            num_rollout_workers=6, rollout_fragment_length="auto", num_envs_per_worker=2
+        )
         .training(
             train_batch_size=8192,
             lr=1e-5,
@@ -143,7 +147,10 @@ if __name__ == "__main__":
     tune.run(
         "PPO",
         name="PPO_COMM_WRAPPER",
-        stop={"timesteps_total": 20_000_000 if not os.environ.get("CI") else 50000, "episode_reward_mean": 1.75},
+        stop={
+            "timesteps_total": 20_000_000 if not os.environ.get("CI") else 50000,
+            "episode_reward_mean": 1.75,
+        },
         checkpoint_freq=10,
         storage_path=f"{curr_path}/ray_res/" + env_name,
         config=config.to_dict(),

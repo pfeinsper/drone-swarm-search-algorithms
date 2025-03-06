@@ -8,7 +8,6 @@ from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.tune.registry import register_env
-import torch
 from torch import nn
 
 
@@ -42,17 +41,11 @@ class MLPModel(TorchModelV2, nn.Module):
             nn.ReLU(),
             # nn.MaxPool2d(kernel_size=2),
             nn.Conv2d(
-                in_channels=16,
-                out_channels=32,
-                kernel_size=(4, 4),
-                stride=(1, 1)
+                in_channels=16, out_channels=32, kernel_size=(4, 4), stride=(1, 1)
             ),
             nn.ReLU(),
             nn.Conv2d(
-                in_channels=32,
-                out_channels=64,
-                kernel_size=(3, 3),
-                stride=(1, 1)
+                in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(1, 1)
             ),
             # nn.MaxPool2d(kernel_size=2),
             nn.Flatten(),
@@ -104,7 +97,7 @@ if __name__ == "__main__":
     config = (
         PPOConfig()
         .environment(env=env_name)
-        .rollouts(num_rollout_workers=5, rollout_fragment_length='auto')
+        .rollouts(num_rollout_workers=5, rollout_fragment_length="auto")
         .training(
             train_batch_size=512,
             lr=2e-5,
