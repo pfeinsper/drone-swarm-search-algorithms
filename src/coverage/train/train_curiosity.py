@@ -91,13 +91,12 @@ parser.set_defaults(enable_new_api_stack=True)
 # TODO: Alter the stop condition
 
 
-def env_creator(_):
+def env_creator(config, args):
     print("-------------------------- ENV CREATOR --------------------------")
-    N_AGENTS = 2
     # 6 hours of simulation, 600 radius
     env = CoverageDroneSwarmSearch(
         timestep_limit=200,
-        drone_amount=N_AGENTS,
+        drone_amount=2,
         prob_matrix_path="../../../data/mat_9.npy",
     )
     env = AllFlattenWrapper(env)
@@ -111,51 +110,7 @@ def env_creator(_):
     return env
 
 
-"""
-def main(args):
-    ray.init()
-
-    config = (
-        PPOConfig()
-        .environment(env=env_name)
-        .rollouts(
-            num_rollout_workers=6, rollout_fragment_length="auto", num_envs_per_worker=4
-        )
-        .training(
-            train_batch_size=8192 * 3,
-            lr=8e-6,
-            gamma=0.9999999,
-            lambda_=0.9,
-            use_gae=True,
-            entropy_coeff=0.01,
-            vf_clip_param=100000,
-            minibatch_size=300,
-            num_sgd_iter=10,
-            model={
-                "fcnet_hiddens": [512, 256],
-            },
-        )
-        .experimental(_disable_preprocessor_api=True)
-        .debugging(log_level="ERROR")
-        .framework(framework="torch")
-        .resources(num_gpus=1)
-    )
-
-    curr_path = pathlib.Path().resolve()
-    tune.run(
-        "PPO",
-        name="PPO_" + input("Exp name: "),
-        # resume=True,
-        stop={"timesteps_total": 40_000_000},
-        checkpoint_freq=25,
-        storage_path=f"{curr_path}/ray_res/" + env_name,
-        config=config.to_dict(),
-    )
-"""
-
-
 ENV_NAME = "DsseCoverage"
-
 
 def main(_):
     args = parser.parse_args()
@@ -164,18 +119,14 @@ def main(_):
         args.enable_new_api_stack
     ), "Must set --enable-new-api-stack when running this script!"
 
-    register_env(ENV_NAME, lambda config: ParallelPettingZooEnv(env_creator(config)))
+    register_env(ENV_NAME, lambda config: ParallelPettingZooEnv(env_creator(config, args)))
 
-    if args.algo not in ["DQN", "PPO"]:
-        raise ValueError(
-            "Curiosity example only implemented for either DQN or PPO! See the "
-        )
     args.algo = "PPO"
     base_config = (
         PPOConfig()
         .environment(ENV_NAME)
         .env_runners(
-            num_envs_per_env_runner=5 if args.algo == "PPO" else 1,
+            num_envs_per_env_runner=5,
             # env_to_module_connector=lambda env: FlattenObservations(multi_agent=True),
         )
         .training(
@@ -250,42 +201,6 @@ def main(_):
             num_sgd_iter=10,
         )
     )
-
-    # Set PPO-specific hyper-parameters.
-    # if args.algo == "PPO":
-    #     base_config.training(
-    #         num_epochs=6,
-    #         # Plug in the correct Learner class.
-    #         learner_class=PPOTorchLearnerWithCuriosity,
-    #         train_batch_size_per_learner=8000,
-    #         train_batch_size=8192 * 3,
-    #         lr=8e-6,
-    #         gamma=0.9999999,
-    #         lambda_=0.9,
-    #         use_gae=True,
-    #         entropy_coeff=0.01,
-    #         vf_clip_param=100000,
-    #         minibatch_size=300,
-    #         num_sgd_iter=10,
-    #     )
-    # elif args.algo == "DQN":
-    #     base_config.training(
-    #         # Plug in the correct Learner class.
-    #         learner_class=DQNTorchLearnerWithCuriosity,
-    #         train_batch_size_per_learner=128,
-    #         lr=0.00075,
-    #         replay_buffer_config={
-    #             "type": "PrioritizedEpisodeReplayBuffer",
-    #             "capacity": 500000,
-    #             "alpha": 0.6,
-    #             "beta": 0.4,
-    #         },
-    #         # Epsilon exploration schedule for DQN.
-    #         epsilon=[[0, 1.0], [500000, 0.05]],
-    #         n_step=(3, 5),
-    #         double_q=True,
-    #         dueling=True,
-    #     )
 
     stop = {
         f"{ENV_RUNNER_RESULTS}/{EPISODE_RETURN_MEAN}": 8000,  # TODO: Check graph for this value
