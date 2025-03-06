@@ -1,4 +1,3 @@
-import pathlib
 from DSSE import CoverageDroneSwarmSearch
 from DSSE.environment.wrappers import RetainDronePosWrapper, AllFlattenWrapper
 import ray
@@ -6,47 +5,37 @@ from ray import tune
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.tune.registry import register_env
-import numpy as np
+from src.utils.random_position_wrapper import RandomPositionWrapper
 
 
-def env_creator(args):
+def env_creator(params, args):
     print("-------------------------- ENV CREATOR --------------------------")
-    N_AGENTS = 2
-    # 6 hours of simulation, 600 radius
     env = CoverageDroneSwarmSearch(
-        timestep_limit=200, drone_amount=N_AGENTS, prob_matrix_path="data/min_matrix.npy"
+        timestep_limit=200,
+        drone_amount=args.n_agents,
+        prob_matrix_path=args.matrix_path,
     )
     env = AllFlattenWrapper(env)
+
     grid_size = env.grid_size
     print("Grid size: ", grid_size)
-    positions = [
-        (0, grid_size // 2),
-        (grid_size - 1, grid_size // 2),
-    ]
-    env = RetainDronePosWrapper(env, positions)
+
+    if args.use_random_positions:
+        env = RandomPositionWrapper(env)
+    else:
+        env = RetainDronePosWrapper(env, position_on_edges(grid_size, args.n_agents))
+
     return env
 
 
-def position_on_diagonal(grid_size, drone_amount):
-    positions = []
-    center = grid_size // 2
-    for i in range(-drone_amount // 2, drone_amount // 2):
-        positions.append((center + i, center + i))
-    return positions
-
-
-def position_on_circle(grid_size, drone_amount, radius):
-    positions = []
-    center = grid_size // 2
-    angle_increment = 2 * np.pi / drone_amount
-
-    for i in range(drone_amount):
-        angle = i * angle_increment
-        x = center + int(radius * np.cos(angle))
-        y = center + int(radius * np.sin(angle))
-        positions.append((x, y))
-
-    return positions
+def position_on_edges(grid_size, n_agents):
+    positions = [
+        (0, grid_size // 2),
+        (grid_size - 1, grid_size // 2),
+        (grid_size // 2, 0),
+        (grid_size // 2, grid_size - 1),
+    ]
+    return positions[0:n_agents]
 
 
 def main(args):
@@ -54,7 +43,9 @@ def main(args):
 
     env_name = "DSSE_Coverage"
 
-    register_env(env_name, lambda config: ParallelPettingZooEnv(env_creator(config)))
+    register_env(
+        env_name, lambda config: ParallelPettingZooEnv(env_creator(config, args))
+    )
 
     config = (
         PPOConfig()
