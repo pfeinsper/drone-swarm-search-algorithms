@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  dsse-algorithms:
+    image: dsse-algorithms
+    build: .
+    container_name: dsse-algorithms
+    working_dir: /app
+    volumes:
+      - .:/app  # Mounts your current folder
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    command: /bin/sh

@@ -38,6 +38,13 @@ Example: Evaluating 4 agents trained on coverage env
 python run_script.py --file test_trained_cov_mlp.py --checkpoint <my_checkpoint_path> --matrix_path data/min_matrix.npy --n_agents 4
 ```
 
+
+#### Using the docker container
+
+```
+docker compose run --rm dsse-algorithms
+```
+
 ## 📚 Documentation Links
 
 - **[Documentation Site](https://pfeinsper.github.io/drone-swarm-search/)**: Access detailed tutorials, usage examples, and comprehensive technical documentation. This resource is essential for understanding the DSSE framework and integrating these algorithms into your projects effectively.
