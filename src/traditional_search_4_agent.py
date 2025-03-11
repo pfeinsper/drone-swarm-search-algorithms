@@ -1,6 +1,6 @@
 from DSSE import CoverageDroneSwarmSearch
 import pandas as pd
-
+import random
 
 def traditional_search_4_agent(obs, agents, opt, passos):
 
@@ -64,35 +64,43 @@ def traditional_search_4_agent(obs, agents, opt, passos):
 
 
 def main():
-    env = CoverageDroneSwarmSearch(
-        drone_amount=4,
-        render_mode="human",
-        prob_matrix_path='min_matrix.npy',
-        timestep_limit=200
-    )
 
-    opt = {
-        "drones_positions": [(4, 3), (5, 3), (4, 4), (5, 4)],
-    }
-    observations, info = env.reset(options=opt)
-
-    step = 0
     infos_list = []
-    passos = 13
 
-    while env.agents:
-        if passos < 0:
-            passos = 12
-        
-        step += 1
-        actions = traditional_search_4_agent(observations, env.agents, opt, passos)
-        observations, rewards, terminations, truncations, infos = env.step(actions)
-        info = infos['drone0']
-        #print(observations['drone0'][0])
-        info['step'] = step
-        infos_list.append(info)
-        print(info)
-        passos -= 1
+    for i in range(25):
+
+        env = CoverageDroneSwarmSearch(
+            drone_amount=4,
+            render_mode="human",
+            prob_matrix_path='min_matrix.npy',
+            timestep_limit=200
+        )
+
+        r_l = random.randint(-1, 1)
+        r_c = random.randint(-1, 1)
+
+        opt = {
+            "drones_positions": [(4+r_l, 3+r_c), (5+r_l, 3+r_c), (4+r_l, 4+r_c), (5+r_l, 4+r_c)],
+        }
+        observations, info = env.reset(options=opt)
+
+        step = 0
+
+        passos = 13
+
+        while env.agents:
+            if passos < 0:
+                passos = 12
+            
+            step += 1
+            actions = traditional_search_4_agent(observations, env.agents, opt, passos)
+            observations, rewards, terminations, truncations, infos = env.step(actions)
+            info = infos['drone0']
+            #print(observations['drone0'][0])
+            info['step'] = step
+            infos_list.append(info)
+            print(info)
+            passos -= 1
 
     df = pd.DataFrame(infos_list)
     df.to_csv('results/traditional_search_4_agent.csv', index=False)

@@ -130,8 +130,11 @@ def a_star(
 
         next_state = min(successors, key=lambda state: state.cost())
         while next_state.position in will_visit:
-            successors.remove(next_state)
-            next_state = min(successors, key=lambda state: state.cost())
+            try:
+                successors.remove(next_state)
+                next_state = min(successors, key=lambda state: state.cost())
+            except ValueError:
+                break
 
         will_visit.append(next_state.position)
         actions[agent] = next_state.get_action().value
@@ -141,7 +144,7 @@ def a_star(
     return actions
 
 
-def main(num_drones: int):
+def main(num_drones: int, seed: int):
 
     infos_list = []
 
@@ -159,7 +162,10 @@ def main(num_drones: int):
         offset = (i // 2) + 1
         x_offset = offset * (-1 if i % 2 == 0 else 1)
         y_offset = offset * (-1 if (i + 1) % 2 == 0 else 1)
-        new_position = (center + x_offset, center + y_offset)
+        random1 = np.random.randint(-2, 2)
+        random2 = np.random.randint(-2, 2)
+        new_position = (center + x_offset + random1, center + y_offset + random2)
+        #new_position = (center + x_offset, center + y_offset)
         positions.append(new_position)
 
     opt = {"drones_positions": positions}
@@ -180,11 +186,12 @@ def main(num_drones: int):
         infos_list.append(infos['drone0'])
     
     df = pd.DataFrame(infos_list)
-    df.to_csv(f'results/a_star_{num_drones}.csv', index=False)
+    df.to_csv(f'results/a_star_{num_drones}_cenario_{seed}.csv', index=False)
 
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--num_drones", type=int, required=True)
+    argparser.add_argument("--seed", type=int, required=True)
     args = argparser.parse_args()
-    main(num_drones=args.num_drones)
+    main(num_drones=args.num_drones, seed=args.seed)
