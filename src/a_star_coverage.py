@@ -7,6 +7,8 @@ import numpy as np
 from DSSE import CoverageDroneSwarmSearch, Actions
 from aigyminsper.search.graph import State
 
+import pandas as pd
+
 MOVEMENTS = {
     Actions.UP: (0, -1),
     Actions.DOWN: (0, 1),
@@ -128,8 +130,11 @@ def a_star(
 
         next_state = min(successors, key=lambda state: state.cost())
         while next_state.position in will_visit:
-            successors.remove(next_state)
-            next_state = min(successors, key=lambda state: state.cost())
+            try:
+                successors.remove(next_state)
+                next_state = min(successors, key=lambda state: state.cost())
+            except ValueError:
+                break
 
         will_visit.append(next_state.position)
         actions[agent] = next_state.get_action().value
@@ -139,12 +144,15 @@ def a_star(
     return actions
 
 
-def main(num_drones: int):
+def main(num_drones: int, seed: int):
+
+    infos_list = []
+
     env = CoverageDroneSwarmSearch(
         drone_amount=num_drones,
         render_mode="human",
-        timestep_limit=200,
-        prob_matrix_path="src/min_matrix.npy",
+        timestep_limit=100,
+        prob_matrix_path="min_matrix.npy",
     )
 
     center = env.grid_size // 2
@@ -154,23 +162,36 @@ def main(num_drones: int):
         offset = (i // 2) + 1
         x_offset = offset * (-1 if i % 2 == 0 else 1)
         y_offset = offset * (-1 if (i + 1) % 2 == 0 else 1)
-        new_position = (center + x_offset, center + y_offset)
+        random1 = np.random.randint(-2, 2)
+        random2 = np.random.randint(-2, 2)
+        new_position = (center + x_offset + random1, center + y_offset + random2)
+        #new_position = (center + x_offset, center + y_offset)
         positions.append(new_position)
 
     opt = {"drones_positions": positions}
 
     observations, _ = env.reset(options=opt)
 
+    step = 0
+
     visited = [set([opt["drones_positions"][i]]) for i in range(num_drones)]
 
     prob_matrix = env.probability_matrix.get_matrix()
     while env.agents:
         actions = a_star(observations, env.agents, prob_matrix.copy(), visited)
-        observations, *_ = env.step(actions)
+        observations, _, _, _, infos = env.step(actions)
+        step += 1
+        infos['drone0']['step'] = step
+        print(infos)
+        infos_list.append(infos['drone0'])
+    
+    df = pd.DataFrame(infos_list)
+    df.to_csv(f'results/a_star_{num_drones}_cenario_{seed}.csv', index=False)
 
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--num_drones", type=int, required=True)
+    argparser.add_argument("--seed", type=int, required=True)
     args = argparser.parse_args()
-    main(num_drones=args.num_drones)
+    main(num_drones=args.num_drones, seed=args.seed)
